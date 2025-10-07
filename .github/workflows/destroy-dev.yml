@@ -44,6 +44,11 @@ jobs:
         working-directory: ./terraform
         run: terraform init
         
+      - name: Cleanup ECR Images
+        run: |
+          chmod +x ./cleanup-ecr.sh
+          ./cleanup-ecr.sh
+        
       - name: Terraform Destroy
         working-directory: ./terraform
         run: terraform destroy -auto-approve
