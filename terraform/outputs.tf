@@ -28,16 +28,6 @@ output "eks_cluster_security_group_id" {
   value       = aws_security_group.eks_cluster.id
 }
 
-output "rds_endpoint" {
-  description = "RDS Endpoint"
-  value       = aws_db_instance.main.endpoint
-}
-
-output "rds_secret_arn" {
-  description = "RDS Credentials Secret ARN"
-  value       = aws_secretsmanager_secret.rds_credentials.arn
-}
-
 output "alb_dns_name" {
   description = "ALB DNS Name"
   value       = aws_lb.main.dns_name

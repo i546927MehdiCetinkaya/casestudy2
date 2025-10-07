@@ -66,27 +66,50 @@ resource "aws_iam_role_policy" "lambda_custom" {
           "dynamodb:Scan"
         ]
         Resource = aws_dynamodb_table.events.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = aws_secretsmanager_secret.rds_credentials.arn
       }
     ]
   })
 }
 
+# Archive Lambda source code
+data "archive_file" "parser" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/parser"
+  output_path = "${path.module}/../lambda/parser.zip"
+  excludes    = ["*.zip", "__pycache__", "*.pyc"]
+}
+
+data "archive_file" "engine" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/engine"
+  output_path = "${path.module}/../lambda/engine.zip"
+  excludes    = ["*.zip", "__pycache__", "*.pyc"]
+}
+
+data "archive_file" "notify" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/notify"
+  output_path = "${path.module}/../lambda/notify.zip"
+  excludes    = ["*.zip", "__pycache__", "*.pyc"]
+}
+
+data "archive_file" "remediate" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/remediate"
+  output_path = "${path.module}/../lambda/remediate.zip"
+  excludes    = ["*.zip", "__pycache__", "*.pyc"]
+}
+
 # Parser Lambda Function
 resource "aws_lambda_function" "parser" {
-  filename      = "${path.module}/../lambda/parser/parser.zip"
-  function_name = "${var.project_name}-${var.environment}-parser"
-  role          = aws_iam_role.lambda.arn
-  handler       = "parser.lambda_handler"
-  runtime       = "python3.11"
-  timeout       = 30
-  memory_size   = 512
+  filename         = data.archive_file.parser.output_path
+  source_code_hash = data.archive_file.parser.output_base64sha256
+  function_name    = "${var.project_name}-${var.environment}-parser"
+  role             = aws_iam_role.lambda.arn
+  handler          = "parser.lambda_handler"
+  runtime          = "python3.11"
+  timeout          = 30
+  memory_size      = 512
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
@@ -107,13 +130,14 @@ resource "aws_lambda_function" "parser" {
 
 # Engine Lambda Function
 resource "aws_lambda_function" "engine" {
-  filename      = "${path.module}/../lambda/engine/engine.zip"
-  function_name = "${var.project_name}-${var.environment}-engine"
-  role          = aws_iam_role.lambda.arn
-  handler       = "engine.lambda_handler"
-  runtime       = "python3.11"
-  timeout       = 60
-  memory_size   = 1024
+  filename         = data.archive_file.engine.output_path
+  source_code_hash = data.archive_file.engine.output_base64sha256
+  function_name    = "${var.project_name}-${var.environment}-engine"
+  role             = aws_iam_role.lambda.arn
+  handler          = "engine.lambda_handler"
+  runtime          = "python3.11"
+  timeout          = 60
+  memory_size      = 1024
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
@@ -126,7 +150,6 @@ resource "aws_lambda_function" "engine" {
       REMEDIATION_QUEUE_URL  = aws_sqs_queue.remediation_queue.url
       NOTIFY_QUEUE_URL       = aws_sqs_queue.notify_queue.url
       DYNAMODB_TABLE         = aws_dynamodb_table.events.name
-      RDS_SECRET_ARN         = aws_secretsmanager_secret.rds_credentials.arn
       LOG_LEVEL              = "INFO"
     }
   }
@@ -136,13 +159,14 @@ resource "aws_lambda_function" "engine" {
 
 # Notify Lambda Function
 resource "aws_lambda_function" "notify" {
-  filename      = "${path.module}/../lambda/notify/notify.zip"
-  function_name = "${var.project_name}-${var.environment}-notify"
-  role          = aws_iam_role.lambda.arn
-  handler       = "notify.lambda_handler"
-  runtime       = "python3.11"
-  timeout       = 30
-  memory_size   = 256
+  filename         = data.archive_file.notify.output_path
+  source_code_hash = data.archive_file.notify.output_base64sha256
+  function_name    = "${var.project_name}-${var.environment}-notify"
+  role             = aws_iam_role.lambda.arn
+  handler          = "notify.lambda_handler"
+  runtime          = "python3.11"
+  timeout          = 30
+  memory_size      = 256
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id
@@ -162,13 +186,14 @@ resource "aws_lambda_function" "notify" {
 
 # Remediate Lambda Function
 resource "aws_lambda_function" "remediate" {
-  filename      = "${path.module}/../lambda/remediate/remediate.zip"
-  function_name = "${var.project_name}-${var.environment}-remediate"
-  role          = aws_iam_role.lambda.arn
-  handler       = "remediate.lambda_handler"
-  runtime       = "python3.11"
-  timeout       = 300
-  memory_size   = 512
+  filename         = data.archive_file.remediate.output_path
+  source_code_hash = data.archive_file.remediate.output_base64sha256
+  function_name    = "${var.project_name}-${var.environment}-remediate"
+  role             = aws_iam_role.lambda.arn
+  handler          = "remediate.lambda_handler"
+  runtime          = "python3.11"
+  timeout          = 300
+  memory_size      = 512
 
   vpc_config {
     subnet_ids         = aws_subnet.private[*].id

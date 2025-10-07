@@ -33,16 +33,3 @@ variable "github_oidc_role_arn" {
   type        = string
   default     = "arn:aws:iam::920120424621:role/githubrepo"
 }
-
-variable "db_username" {
-  description = "Database master username"
-  type        = string
-  default     = "soaradmin"
-  sensitive   = true
-}
-
-variable "db_password" {
-  description = "Database master password"
-  type        = string
-  sensitive   = true
-}

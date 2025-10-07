@@ -1,0 +1,64 @@
+name: Destroy Dev Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "DESTROY" to confirm infrastructure destruction'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    environment: dev
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Verify Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "DESTROY" ]; then
+            echo "❌ Confirmation failed. You must type 'DESTROY' to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation verified"
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920120424621:role/githubrepo
+          aws-region: eu-central-1
+          
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+          
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+        
+      - name: Terraform Destroy
+        working-directory: ./terraform
+        run: terraform destroy -auto-approve
+        
+      - name: Destroy Summary
+        if: always()
+        run: |
+          echo "## 🗑️ Infrastructure Destruction Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ $? -eq 0 ]; then
+            echo "✅ **Status**: Successfully destroyed" >> $GITHUB_STEP_SUMMARY
+            echo "- All AWS resources removed" >> $GITHUB_STEP_SUMMARY
+            echo "- Terraform state updated" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Status**: Destruction failed" >> $GITHUB_STEP_SUMMARY
+            echo "- Check logs for details" >> $GITHUB_STEP_SUMMARY
+            echo "- Manual cleanup may be required" >> $GITHUB_STEP_SUMMARY
+          fi
