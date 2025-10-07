@@ -1,0 +1,98 @@
+name: Force Cleanup and Redeploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "CLEANUP" to confirm force cleanup'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  force-cleanup:
+    name: Force Cleanup All Resources
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirmation == 'CLEANUP'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920120424621:role/githubrepo
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Delete Lambda Event Source Mappings
+        continue-on-error: true
+        run: |
+          echo "Deleting Lambda event source mappings..."
+          for func in parser engine notify remediate; do
+            MAPPINGS=$(aws lambda list-event-source-mappings --function-name casestudy2-dev-$func --region ${{ env.AWS_REGION }} --query "EventSourceMappings[].UUID" --output text 2>/dev/null || echo "")
+            for uuid in $MAPPINGS; do
+              echo "  Deleting mapping: $uuid"
+              aws lambda delete-event-source-mapping --uuid $uuid --region ${{ env.AWS_REGION }} || true
+            done
+          done
+      
+      - name: Delete EKS Cluster
+        continue-on-error: true
+        run: |
+          echo "Deleting EKS cluster..."
+          aws eks delete-cluster --name casestudy2-dev-eks --region ${{ env.AWS_REGION }} || true
+          echo "Waiting for EKS cluster deletion (this takes 10-15 min)..."
+          aws eks wait cluster-deleted --name casestudy2-dev-eks --region ${{ env.AWS_REGION }} || true
+      
+      - name: Delete Load Balancer
+        continue-on-error: true
+        run: |
+          echo "Deleting ALB..."
+          ALB_ARN=$(aws elbv2 describe-load-balancers --names casestudy2-dev-alb --region ${{ env.AWS_REGION }} --query "LoadBalancers[0].LoadBalancerArn" --output text 2>/dev/null || echo "")
+          if [ -n "$ALB_ARN" ] && [ "$ALB_ARN" != "None" ]; then
+            aws elbv2 delete-load-balancer --load-balancer-arn $ALB_ARN --region ${{ env.AWS_REGION }} || true
+            echo "Waiting for ALB deletion..."
+            sleep 30
+          fi
+      
+      - name: Delete Target Groups
+        continue-on-error: true
+        run: |
+          echo "Deleting target groups..."
+          TGS=$(aws elbv2 describe-target-groups --region ${{ env.AWS_REGION }} --query "TargetGroups[?contains(TargetGroupName, 'casestudy2-dev')].TargetGroupArn" --output text || echo "")
+          for tg in $TGS; do
+            echo "  Deleting TG: $tg"
+            aws elbv2 delete-target-group --target-group-arn $tg --region ${{ env.AWS_REGION }} || true
+          done
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+      
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+      
+      - name: Terraform Destroy
+        working-directory: ./terraform
+        continue-on-error: true
+        run: terraform destroy -auto-approve
+      
+      - name: Cleanup Summary
+        run: |
+          echo "## 🧹 Force Cleanup Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Lambda event source mappings deleted" >> $GITHUB_STEP_SUMMARY
+          echo "- EKS cluster deleted" >> $GITHUB_STEP_SUMMARY
+          echo "- Load balancers deleted" >> $GITHUB_STEP_SUMMARY
+          echo "- Terraform destroy executed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Ready for fresh deployment!" >> $GITHUB_STEP_SUMMARY
