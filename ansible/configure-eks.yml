@@ -1,0 +1,75 @@
+---
+- name: Configure EKS Cluster
+  hosts: localhost
+  gather_facts: false
+  vars:
+    cluster_name: "casestudy2-dev-eks"
+    aws_region: "eu-central-1"
+    
+  tasks:
+    - name: Update kubeconfig
+      command: >
+        aws eks update-kubeconfig 
+        --name {{ cluster_name }} 
+        --region {{ aws_region }}
+      
+    - name: Install AWS Load Balancer Controller
+      block:
+        - name: Create IAM policy for LB controller
+          command: >
+            aws iam create-policy 
+            --policy-name AWSLoadBalancerControllerIAMPolicy 
+            --policy-document file://iam-policy.json
+          ignore_errors: yes
+          
+        - name: Create service account
+          shell: |
+            kubectl create serviceaccount aws-load-balancer-controller -n kube-system || true
+            
+        - name: Install AWS Load Balancer Controller via Helm
+          shell: |
+            helm repo add eks https://aws.github.io/eks-charts
+            helm repo update
+            helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
+              -n kube-system \
+              --set clusterName={{ cluster_name }} \
+              --set serviceAccount.create=false \
+              --set serviceAccount.name=aws-load-balancer-controller
+          ignore_errors: yes
+    
+    - name: Apply Kubernetes manifests
+      shell: |
+        kubectl apply -f ../kubernetes/namespace.yaml
+        kubectl apply -f ../kubernetes/soar-api-deployment.yaml
+        kubectl apply -f ../kubernetes/soar-processor-deployment.yaml
+        kubectl apply -f ../kubernetes/soar-remediation-deployment.yaml
+        kubectl apply -f ../kubernetes/ingress.yaml
+      
+    - name: Install monitoring stack
+      shell: |
+        kubectl apply -f ../kubernetes/prometheus.yaml
+        kubectl apply -f ../kubernetes/grafana.yaml
+      
+    - name: Wait for deployments to be ready
+      command: >
+        kubectl wait --for=condition=available --timeout=300s 
+        deployment/{{ item }} -n soar-system
+      loop:
+        - soar-api
+        - soar-processor
+        - soar-remediation
+      ignore_errors: yes
+    
+    - name: Get service endpoints
+      shell: |
+        echo "SOAR API:"
+        kubectl get svc soar-api -n soar-system
+        echo "Grafana:"
+        kubectl get svc grafana -n monitoring
+        echo "ALB Ingress:"
+        kubectl get ingress -n soar-system
+      register: endpoints
+      
+    - name: Display endpoints
+      debug:
+        var: endpoints.stdout_lines

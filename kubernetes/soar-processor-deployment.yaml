@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: soar-processor
+  namespace: soar-system
+  labels:
+    app: soar-processor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: soar-processor
+  template:
+    metadata:
+      labels:
+        app: soar-processor
+    spec:
+      containers:
+      - name: soar-processor
+        image: 920120424621.dkr.ecr.eu-central-1.amazonaws.com/casestudy2/dev/soar-processor:latest
+        env:
+        - name: ENVIRONMENT
+          value: "dev"
+        - name: AWS_REGION
+          value: "eu-central-1"
+        - name: DYNAMODB_TABLE
+          value: "casestudy2-dev-events"
+        - name: SQS_QUEUE_URL
+          value: "https://sqs.eu-central-1.amazonaws.com/920120424621/casestudy2-dev-engine-queue"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pgrep -f processor
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: soar-processor
+  namespace: soar-system
+  labels:
+    app: soar-processor
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8081
+    targetPort: 8081
+    protocol: TCP
+    name: metrics
+  selector:
+    app: soar-processor
