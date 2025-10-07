@@ -1,12 +1,8 @@
 name: Deploy to Dev
 
 on:
-  # Temporarily disabled automatic deployment - manual trigger only
-  # push:
-  #   branches:
-  #     - dev
-  #     - main
   workflow_dispatch:
+  # Auto-deploy disabled - manual trigger only until resources are clean
 
 permissions:
   id-token: write
