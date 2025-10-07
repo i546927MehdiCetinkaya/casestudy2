@@ -5,8 +5,25 @@ set -e
 
 REGION="eu-central-1"
 VPC_ID="vpc-091b0c91485383daa"
+PROJECT="casestudy2"
+ENV="dev"
 
 echo "🔍 Finding and cleaning up network dependencies..."
+
+# Delete Lambda functions first (they create ENIs)
+echo "🔍 Deleting Lambda functions..."
+LAMBDA_FUNCTIONS=$(aws lambda list-functions --region "$REGION" --query "Functions[?starts_with(FunctionName, '${PROJECT}-${ENV}')].FunctionName" --output text 2>/dev/null || echo "")
+
+if [ -n "$LAMBDA_FUNCTIONS" ]; then
+  for FUNC in $LAMBDA_FUNCTIONS; do
+    echo "Deleting Lambda function: $FUNC"
+    aws lambda delete-function --function-name "$FUNC" --region "$REGION" 2>/dev/null || echo "⚠️  Could not delete $FUNC"
+  done
+  echo "⏳ Waiting 60 seconds for Lambda ENIs to be released..."
+  sleep 60
+else
+  echo "⚠️  No Lambda functions found"
+fi
 
 # Function to delete ENIs in a subnet
 cleanup_enis_in_subnet() {
