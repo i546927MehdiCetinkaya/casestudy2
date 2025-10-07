@@ -38,7 +38,7 @@ variable "github_oidc_role_arn" {
 variable "onprem_public_ip" {
   description = "Public IP address of on-premises VPN endpoint (Fontys Netlab)"
   type        = string
-  default     = "REPLACE_WITH_YOUR_PUBLIC_IP"  # Get from: curl ifconfig.me or https://whatismyipaddress.com
+  default     = "145.93.176.197"  # Fontys Netlab public IP
 }
 
 variable "onprem_cidr" {
@@ -50,5 +50,5 @@ variable "onprem_cidr" {
 variable "enable_vpn" {
   description = "Enable VPN Site-to-Site connection to on-premises"
   type        = bool
-  default     = false  # Set to true after configuring onprem_public_ip
+  default     = true  # Enabled for Fontys Netlab connectivity
 }
