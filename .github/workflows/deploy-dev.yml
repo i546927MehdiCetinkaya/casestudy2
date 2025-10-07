@@ -145,6 +145,7 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           kubectl apply -f kubernetes/namespace.yaml
+          kubectl apply -f kubernetes/service-account.yaml
           kubectl apply -f kubernetes/soar-api-deployment.yaml
           kubectl apply -f kubernetes/soar-processor-deployment.yaml
           kubectl apply -f kubernetes/soar-remediation-deployment.yaml

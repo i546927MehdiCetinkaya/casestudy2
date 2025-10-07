@@ -77,3 +77,18 @@ output "ecr_soar_remediation_url" {
   description = "ECR SOAR Remediation Repository URL"
   value       = aws_ecr_repository.soar_remediation.repository_url
 }
+
+output "soar_pods_role_arn" {
+  description = "IAM Role ARN for SOAR Pods"
+  value       = aws_iam_role.soar_pods.arn
+}
+
+output "vpn_connection_id" {
+  description = "VPN Connection ID"
+  value       = var.enable_vpn ? aws_vpn_connection.main[0].id : null
+}
+
+output "customer_gateway_id" {
+  description = "Customer Gateway ID"
+  value       = var.enable_vpn ? aws_customer_gateway.main[0].id : null
+}

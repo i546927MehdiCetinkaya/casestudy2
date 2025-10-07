@@ -15,6 +15,7 @@ spec:
       labels:
         app: soar-processor
     spec:
+      serviceAccountName: soar-pods
       containers:
       - name: soar-processor
         image: 920120424621.dkr.ecr.eu-central-1.amazonaws.com/casestudy2/dev/soar-processor:latest
