@@ -49,6 +49,12 @@ jobs:
           chmod +x ./cleanup-ecr.sh
           ./cleanup-ecr.sh
         
+      - name: Cleanup Network Dependencies
+        run: |
+          chmod +x ./cleanup-network.sh
+          ./cleanup-network.sh
+        continue-on-error: true
+        
       - name: Terraform Destroy
         working-directory: ./terraform
         run: terraform destroy -auto-approve
