@@ -2,6 +2,7 @@
 resource "aws_ecr_repository" "soar_api" {
   name                 = "${var.project_name}/${var.environment}/soar-api"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -15,6 +16,7 @@ resource "aws_ecr_repository" "soar_api" {
 resource "aws_ecr_repository" "soar_processor" {
   name                 = "${var.project_name}/${var.environment}/soar-processor"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -28,6 +30,7 @@ resource "aws_ecr_repository" "soar_processor" {
 resource "aws_ecr_repository" "soar_remediation" {
   name                 = "${var.project_name}/${var.environment}/soar-remediation"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
