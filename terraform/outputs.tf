@@ -83,12 +83,3 @@ output "soar_pods_role_arn" {
   value       = aws_iam_role.soar_pods.arn
 }
 
-output "vpn_connection_id" {
-  description = "VPN Connection ID"
-  value       = var.enable_vpn ? aws_vpn_connection.main[0].id : null
-}
-
-output "customer_gateway_id" {
-  description = "Customer Gateway ID"
-  value       = var.enable_vpn ? aws_customer_gateway.main[0].id : null
-}
