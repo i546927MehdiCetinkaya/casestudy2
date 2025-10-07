@@ -48,11 +48,13 @@ resource "aws_iam_role_policy" "lambda_custom" {
           "sqs:SendMessage",
           "sqs:ReceiveMessage",
           "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
+          "sqs:GetQueueAttributes",
+          "sqs:ChangeMessageVisibility"
         ]
         Resource = [
           aws_sqs_queue.parser_queue.arn,
           aws_sqs_queue.engine_queue.arn,
+          aws_sqs_queue.notify_queue.arn,
           aws_sqs_queue.remediation_queue.arn
         ]
       },
