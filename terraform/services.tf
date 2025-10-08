@@ -147,7 +147,7 @@ resource "aws_cloudwatch_event_rule" "cloudtrail_events" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "parser_queue" {
+resource "aws_cloudwatch_event_target" "cloudtrail_parser_queue" {
   rule      = aws_cloudwatch_event_rule.cloudtrail_events.name
   target_id = "SendToParserQueue"
   arn       = aws_sqs_queue.parser_queue.arn
