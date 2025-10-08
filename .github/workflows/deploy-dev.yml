@@ -2,7 +2,40 @@ name: Deploy to Dev
 
 on:
   workflow_dispatch:
-  # Auto-deploy disabled - manual trigger only until resources are clean
+    inputs:
+      deploy_terraform:
+        description: 'Deploy Terraform infrastructure'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      deploy_lambda:
+        description: 'Deploy Lambda functions'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      deploy_eks:
+        description: 'Deploy EKS services'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'lambda/**'
+      - 'docker/**'
+      - 'kubernetes/**'
+      - '.github/workflows/deploy-dev.yml'
 
 permissions:
   id-token: write
@@ -17,6 +50,7 @@ jobs:
   terraform:
     name: Terraform Deploy
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.deploy_terraform != 'false' }}
     outputs:
       eks_cluster_name: ${{ steps.tf-output.outputs.eks_cluster_name }}
       
@@ -41,7 +75,16 @@ jobs:
         
       - name: Terraform Plan
         working-directory: ./terraform
-        run: terraform plan -out=tfplan
+        run: |
+          terraform plan -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+          
+      - name: Upload Plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: terraform/plan.txt
+          retention-days: 7
           
       - name: Terraform Apply
         working-directory: ./terraform
@@ -57,6 +100,10 @@ jobs:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
     needs: terraform
+    if: |
+      always() && 
+      (needs.terraform.result == 'success' || needs.terraform.result == 'skipped') &&
+      github.event.inputs.deploy_eks != 'false'
     strategy:
       matrix:
         service: [soar-api, soar-processor, soar-remediation]
@@ -89,6 +136,10 @@ jobs:
     name: Deploy Lambda Functions
     runs-on: ubuntu-latest
     needs: terraform
+    if: |
+      always() && 
+      (needs.terraform.result == 'success' || needs.terraform.result == 'skipped') &&
+      github.event.inputs.deploy_lambda != 'false'
     
     steps:
       - name: Checkout code
@@ -127,6 +178,11 @@ jobs:
     name: Deploy to EKS
     runs-on: ubuntu-latest
     needs: [terraform, build-and-push]
+    if: |
+      always() && 
+      (needs.terraform.result == 'success' || needs.terraform.result == 'skipped') &&
+      (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped') &&
+      github.event.inputs.deploy_eks != 'false'
     
     steps:
       - name: Checkout code
@@ -170,12 +226,24 @@ jobs:
           
       - name: Get Endpoints
         run: |
+          echo "=== DEPLOYMENT SUMMARY ==="
           echo "=== SOAR API Service ==="
           kubectl get svc soar-api -n soar-system
+          echo ""
+          echo "=== Internal ALB (for Lambda) ==="
+          kubectl get ingress soar-alb -n soar-system -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+          echo ""
           echo "=== Ingress ==="
           kubectl get ingress -n soar-system
-          echo "=== Grafana ==="
+          echo ""
+          echo "=== Grafana Monitoring ==="
           kubectl get svc grafana -n monitoring
+          echo ""
+          echo "=== Lambda Functions ==="
+          aws lambda list-functions --query "Functions[?starts_with(FunctionName, 'casestudy2-dev')].{Name:FunctionName,Runtime:Runtime,Status:State}" --output table
+          echo ""
+          echo "=== VPC Endpoints ==="
+          aws ec2 describe-vpc-endpoints --filters "Name=tag:Name,Values=casestudy2-dev-*" --query "VpcEndpoints[].{Service:ServiceName,State:State}" --output table
 
   notify:
     name: Notify Deployment Status
@@ -188,8 +256,27 @@ jobs:
         if: ${{ needs.deploy-eks.result == 'success' }}
         run: |
           echo "✅ Deployment to Dev environment successful!"
-          echo "EKS Cluster: ${{ env.EKS_CLUSTER }}"
-          echo "Region: ${{ env.AWS_REGION }}"
+          echo ""
+          echo "🏗️  Infrastructure Details:"
+          echo "   EKS Cluster: ${{ env.EKS_CLUSTER }}"
+          echo "   Region: ${{ env.AWS_REGION }}"
+          echo ""
+          echo "🔧 Components Deployed:"
+          echo "   ✓ Terraform Infrastructure"
+          echo "   ✓ Lambda Functions (Parser, Engine, Notify, Remediate)"
+          echo "   ✓ EKS Deployments (SOAR API, Processor, Remediation)"
+          echo "   ✓ Monitoring Stack (Prometheus, Grafana)"
+          echo ""
+          echo "📊 Access Points:"
+          echo "   • Internal ALB: Check kubectl output above"
+          echo "   • Client VPN: Required for monitoring access"
+          echo "   • Lambda Flow: EventBridge → SQS → Lambda → ALB → EKS"
+          echo ""
+          echo "🔍 Next Steps:"
+          echo "   1. Connect to Client VPN"
+          echo "   2. Access Grafana for monitoring"
+          echo "   3. Test Lambda flow with sample event"
+          echo "   4. Verify VPC endpoints are working"
           
       - name: Deployment Failed
         if: ${{ needs.deploy-eks.result == 'failure' }}

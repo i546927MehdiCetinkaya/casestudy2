@@ -1,12 +1,82 @@
 # SOAR Platform - Deployment Guide
 
 ## Table of Contents
-1. [Prerequisites](#prerequisites)
-2. [AWS Setup](#aws-setup)
-3. [GitHub Configuration](#github-configuration)
-4. [Initial Deployment](#initial-deployment)
-5. [Verification](#verification)
-6. [Troubleshooting](#troubleshooting)
+1. [Overview](#overview)
+2. [Deployment Methods](#deployment-methods)
+3. [Prerequisites](#prerequisites)
+4. [GitHub Actions Deployment](#github-actions-deployment)
+5. [Manual Deployment](#manual-deployment)
+6. [Post-Deployment Verification](#post-deployment-verification)
+7. [Troubleshooting](#troubleshooting)
+
+## Overview
+
+De SOAR platform kan op twee manieren worden gedeployed:
+1. **Automatisch via GitHub Actions** (aanbevolen) - Push naar main branch
+2. **Handmatig via Terraform/kubectl** - Voor development en testing
+
+### Architecture Components
+- **Terraform**: VPC, EKS, Lambda, VPC Endpoints, VPN
+- **Lambda Functions**: Parser, Engine, Notify, Remediate (Python 3.11)
+- **EKS Services**: SOAR API, Processor, Remediation (Kubernetes 1.28)
+- **Monitoring**: Prometheus, Grafana
+- **Networking**: Internal ALB, VPC Endpoints, Site-to-Site VPN, Client VPN
+
+## Deployment Methods
+
+### 1. Automatische Deployment via GitHub Actions
+
+**Trigger**: Push naar `main` branch met changes in:
+- `terraform/**`
+- `lambda/**`
+- `docker/**`
+- `kubernetes/**`
+
+**Workflow**: `.github/workflows/deploy-dev.yml`
+
+**Steps**:
+```
+Push to main
+    ↓
+Terraform Apply (VPC, EKS, Lambda)
+    ↓
+Build & Push Docker Images (ECR)
+    ↓
+Deploy Lambda Functions
+    ↓
+Deploy to EKS (Kubernetes)
+    ↓
+Success Notification
+```
+
+**Manual Trigger Options** (GitHub UI):
+- Deploy Terraform: true/false
+- Deploy Lambda: true/false
+- Deploy EKS: true/false
+
+### 2. Manual Deployment
+
+Voor development en troubleshooting.
+
+```bash
+# 1. Terraform
+cd terraform
+terraform init
+terraform plan
+terraform apply
+
+# 2. Docker images
+cd docker
+docker build -t soar-api:latest soar-api/
+# ... push to ECR
+
+# 3. Lambda
+cd lambda
+# ... package and deploy
+
+# 4. EKS
+kubectl apply -f kubernetes/
+```
 
 ## Prerequisites
 
