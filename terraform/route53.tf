@@ -54,19 +54,9 @@ resource "aws_route53_record" "onprem_webserver" {
   records = [var.onprem_webserver_ip]
 }
 
-# VPC Endpoint for Route53
-resource "aws_vpc_endpoint" "route53" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.aws_region}.route53resolver"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = concat(aws_subnet.private[*].id, [aws_subnet.alb_private.id], [aws_subnet.lambda_private.id])
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-route53-endpoint"
-  }
-}
+# Note: Route53 Resolver does not have a VPC endpoint service
+# Route53 is accessed via AWS backbone network and doesn't require VPC endpoints
+# Private DNS resolution is handled by the VPC DNS resolver automatically
 
 # Route53 Resolver Rule for On-Premises DNS (optional)
 resource "aws_route53_resolver_rule" "onprem_dns" {

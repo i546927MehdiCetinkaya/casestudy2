@@ -50,7 +50,7 @@ variable "onprem_cidr" {
 variable "enable_vpn" {
   description = "Enable VPN Site-to-Site connection to on-premises"
   type        = bool
-  default     = false  # Disabled by default - enable when Fontys Netlab is configured
+  default     = true  # Enabled - subnet errors are now fixed
 }
 
 # On-Premises Webserver Configuration
@@ -97,7 +97,7 @@ variable "onprem_dns_domain" {
 variable "enable_client_vpn" {
   description = "Enable Client VPN for remote access to monitoring"
   type        = bool
-  default     = false  # Disabled by default - enable when certificates are configured
+  default     = true  # Enabled - subnet errors are now fixed
 }
 
 variable "client_vpn_cidr" {
