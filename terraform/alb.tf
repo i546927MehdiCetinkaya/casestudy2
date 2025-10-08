@@ -1,10 +1,10 @@
-# Application Load Balancer
+# Application Load Balancer (Internal in Private Subnet AZ A)
 resource "aws_lb" "main" {
   name               = "${var.project_name}-${var.environment}-alb"
-  internal           = false
+  internal           = true  # Internal ALB in private subnet
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = aws_subnet.public[*].id
+  subnets            = [aws_subnet.alb_private.id, aws_subnet.private[0].id]  # Private subnet AZ A
 
   enable_deletion_protection = false
   enable_http2              = true

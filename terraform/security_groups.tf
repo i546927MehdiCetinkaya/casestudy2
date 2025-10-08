@@ -98,24 +98,42 @@ resource "aws_security_group" "eks_nodes" {
   }
 }
 
-# ALB Security Group
+# ALB Security Group (Internal ALB in Private Subnet)
 resource "aws_security_group" "alb" {
   name_prefix = "${var.project_name}-${var.environment}-alb-sg"
-  description = "Security group for Application Load Balancer"
+  description = "Security group for Internal Application Load Balancer"
   vpc_id      = aws_vpc.main.id
 
   ingress {
+    description = "HTTP from VPC"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.vpc_cidr]
   }
 
   ingress {
+    description = "HTTPS from VPC"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    description = "HTTP from Client VPN"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [var.client_vpn_cidr]
+  }
+
+  ingress {
+    description = "HTTPS from Client VPN"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.client_vpn_cidr]
   }
 
   egress {

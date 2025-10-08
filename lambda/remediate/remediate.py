@@ -2,6 +2,7 @@ import json
 import os
 import boto3
 import logging
+import requests
 from datetime import datetime
 from decimal import Decimal
 
@@ -17,11 +18,13 @@ s3 = boto3.client('s3')
 
 # Environment variables
 DYNAMODB_TABLE = os.environ.get('DYNAMODB_TABLE')
+ALB_ENDPOINT = os.environ.get('ALB_ENDPOINT')  # Internal ALB endpoint
 
 def lambda_handler(event, context):
     """
     Remediate Lambda Function
     Executes automated remediation actions for security events
+    Calls internal ALB to trigger EKS-based remediation
     """
     logger.info(f"Received event: {json.dumps(event)}")
     
@@ -46,6 +49,10 @@ def lambda_handler(event, context):
                     result = execute_remediation(action, event_data)
                     remediation_results.append(result)
                     logger.info(f"Executed action {action} for event {event_id}: {result}")
+                
+                # Call internal ALB to trigger EKS-based remediation (as per diagram)
+                alb_response = call_alb_remediation(event_id, event_data, remediation_results)
+                logger.info(f"ALB response for event {event_id}: {alb_response}")
                 
                 # Update event in DynamoDB
                 table.update_item(
@@ -229,5 +236,62 @@ def rollback_changes(event_data):
         return {
             'action': 'ROLLBACK_CHANGES',
             'status': 'failed',
+            'error': str(e)
+        }
+
+def call_alb_remediation(event_id, event_data, remediation_results):
+    """
+    Call internal ALB to trigger EKS-based remediation
+    As per architecture diagram: Lambda -> ALB -> EKS
+    """
+    try:
+        if not ALB_ENDPOINT:
+            logger.warning("ALB_ENDPOINT not configured, skipping ALB call")
+            return {
+                'status': 'skipped',
+                'message': 'ALB endpoint not configured'
+            }
+        
+        # Prepare payload for ALB/EKS
+        payload = {
+            'event_id': event_id,
+            'event_data': event_data,
+            'remediation_results': remediation_results,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        
+        # Call internal ALB (EKS SOAR API)
+        logger.info(f"Calling ALB endpoint: {ALB_ENDPOINT}")
+        response = requests.post(
+            ALB_ENDPOINT,
+            json=payload,
+            timeout=30,
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        response.raise_for_status()
+        
+        return {
+            'status': 'success',
+            'status_code': response.status_code,
+            'response': response.json() if response.content else {}
+        }
+        
+    except requests.exceptions.Timeout:
+        logger.error(f"Timeout calling ALB endpoint: {ALB_ENDPOINT}")
+        return {
+            'status': 'timeout',
+            'message': 'ALB call timed out'
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error calling ALB: {str(e)}")
+        return {
+            'status': 'failed',
+            'error': str(e)
+        }
+    except Exception as e:
+        logger.error(f"Unexpected error calling ALB: {str(e)}")
+        return {
+            'status': 'error',
             'error': str(e)
         }

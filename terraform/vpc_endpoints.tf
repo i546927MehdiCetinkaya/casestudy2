@@ -36,7 +36,8 @@ resource "aws_vpc_endpoint" "s3" {
   route_table_ids = concat(
     [aws_route_table.public.id],
     aws_route_table.private[*].id,
-    aws_route_table.lambda[*].id
+    [aws_route_table.alb_private.id],
+    [aws_route_table.lambda_private.id]
   )
 
   tags = {
@@ -52,7 +53,8 @@ resource "aws_vpc_endpoint" "dynamodb" {
   route_table_ids = concat(
     [aws_route_table.public.id],
     aws_route_table.private[*].id,
-    aws_route_table.lambda[*].id
+    [aws_route_table.alb_private.id],
+    [aws_route_table.lambda_private.id]
   )
 
   tags = {
@@ -65,7 +67,7 @@ resource "aws_vpc_endpoint" "sqs" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.sqs"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = concat(aws_subnet.private[*].id, aws_subnet.lambda[*].id)
+  subnet_ids          = concat(aws_subnet.private[*].id, [aws_subnet.alb_private.id], [aws_subnet.lambda_private.id])
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -79,7 +81,7 @@ resource "aws_vpc_endpoint" "sns" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.sns"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = concat(aws_subnet.private[*].id, aws_subnet.lambda[*].id)
+  subnet_ids          = concat(aws_subnet.private[*].id, [aws_subnet.alb_private.id], [aws_subnet.lambda_private.id])
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -93,7 +95,7 @@ resource "aws_vpc_endpoint" "logs" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.logs"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = concat(aws_subnet.private[*].id, aws_subnet.lambda[*].id)
+  subnet_ids          = concat(aws_subnet.private[*].id, [aws_subnet.alb_private.id], [aws_subnet.lambda_private.id])
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
@@ -107,7 +109,7 @@ resource "aws_vpc_endpoint" "lambda" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.lambda"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = concat(aws_subnet.private[*].id, aws_subnet.lambda[*].id)
+  subnet_ids          = concat(aws_subnet.private[*].id, [aws_subnet.alb_private.id], [aws_subnet.lambda_private.id])
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 

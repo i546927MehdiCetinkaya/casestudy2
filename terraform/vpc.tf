@@ -25,7 +25,7 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Private Subnets for EKS
+# Private Subnets for EKS (AZ A and AZ B)
 resource "aws_subnet" "private" {
   count             = 2
   vpc_id            = aws_vpc.main.id
@@ -39,15 +39,25 @@ resource "aws_subnet" "private" {
   }
 }
 
-# Lambda Subnets (separate from EKS)
-resource "aws_subnet" "lambda" {
-  count             = 2
+# ALB Private Subnet (AZ A only)
+resource "aws_subnet" "alb_private" {
   vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 20)
-  availability_zone = data.aws_availability_zones.available.names[count.index]
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 30)
+  availability_zone = data.aws_availability_zones.available.names[0]  # AZ A
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-lambda-${count.index + 1}"
+    Name = "${var.project_name}-${var.environment}-alb-private-az-a"
+  }
+}
+
+# Lambda Private Subnet (AZ A only) - 10.0.2.0/24 as per diagram
+resource "aws_subnet" "lambda_private" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 2)  # 10.0.2.0/24
+  availability_zone = data.aws_availability_zones.available.names[0]  # AZ A
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-lambda-private-az-a"
   }
 }
 
@@ -110,17 +120,31 @@ resource "aws_route_table" "private" {
   }
 }
 
-resource "aws_route_table" "lambda" {
-  count  = 2
+# Route Table for ALB Private Subnet (AZ A)
+resource "aws_route_table" "alb_private" {
   vpc_id = aws_vpc.main.id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[count.index].id
+    nat_gateway_id = aws_nat_gateway.main[0].id  # Use NAT in AZ A
   }
 
   tags = {
-    Name = "${var.project_name}-${var.environment}-lambda-rt-${count.index + 1}"
+    Name = "${var.project_name}-${var.environment}-alb-private-rt-az-a"
+  }
+}
+
+# Route Table for Lambda Private Subnet (AZ A)
+resource "aws_route_table" "lambda_private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main[0].id  # Use NAT in AZ A
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-lambda-private-rt-az-a"
   }
 }
 
@@ -137,8 +161,12 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
-resource "aws_route_table_association" "lambda" {
-  count          = 2
-  subnet_id      = aws_subnet.lambda[count.index].id
-  route_table_id = aws_route_table.lambda[count.index].id
+resource "aws_route_table_association" "alb_private" {
+  subnet_id      = aws_subnet.alb_private.id
+  route_table_id = aws_route_table.alb_private.id
+}
+
+resource "aws_route_table_association" "lambda_private" {
+  subnet_id      = aws_subnet.lambda_private.id
+  route_table_id = aws_route_table.lambda_private.id
 }
