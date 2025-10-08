@@ -114,7 +114,7 @@ resource "aws_lambda_function" "parser" {
   memory_size      = 512
 
   vpc_config {
-    subnet_ids         = aws_subnet.private[*].id
+    subnet_ids         = aws_subnet.lambda[*].id
     security_group_ids = [aws_security_group.lambda.id]
   }
 
@@ -142,7 +142,7 @@ resource "aws_lambda_function" "engine" {
   memory_size      = 1024
 
   vpc_config {
-    subnet_ids         = aws_subnet.private[*].id
+    subnet_ids         = aws_subnet.lambda[*].id
     security_group_ids = [aws_security_group.lambda.id]
   }
 
@@ -171,7 +171,7 @@ resource "aws_lambda_function" "notify" {
   memory_size      = 256
 
   vpc_config {
-    subnet_ids         = aws_subnet.private[*].id
+    subnet_ids         = aws_subnet.lambda[*].id
     security_group_ids = [aws_security_group.lambda.id]
   }
 
@@ -198,7 +198,7 @@ resource "aws_lambda_function" "remediate" {
   memory_size      = 512
 
   vpc_config {
-    subnet_ids         = aws_subnet.private[*].id
+    subnet_ids         = aws_subnet.lambda[*].id
     security_group_ids = [aws_security_group.lambda.id]
   }
 

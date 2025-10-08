@@ -61,6 +61,31 @@ resource "aws_security_group" "eks_nodes" {
     security_groups = [aws_security_group.eks_cluster.id]
   }
 
+  # Allow access from Client VPN for monitoring
+  ingress {
+    description = "Grafana from Client VPN"
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = [var.client_vpn_cidr]
+  }
+
+  ingress {
+    description = "Prometheus from Client VPN"
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = [var.client_vpn_cidr]
+  }
+
+  ingress {
+    description = "HTTP from Client VPN"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = [var.client_vpn_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

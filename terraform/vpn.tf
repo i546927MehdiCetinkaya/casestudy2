@@ -43,6 +43,14 @@ resource "aws_vpn_gateway_route_propagation" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
+# VPN Gateway Route Propagation to Lambda Subnets
+resource "aws_vpn_gateway_route_propagation" "lambda" {
+  count = var.enable_vpn ? length(aws_route_table.lambda) : 0
+  
+  vpn_gateway_id = aws_vpn_gateway.main[0].id
+  route_table_id = aws_route_table.lambda[count.index].id
+}
+
 # Site-to-Site VPN Connection
 resource "aws_vpn_connection" "main" {
   count = var.enable_vpn ? 1 : 0

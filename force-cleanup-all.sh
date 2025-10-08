@@ -55,13 +55,34 @@ if [ -n "$NAT_GWS" ]; then
   sleep 180
 fi
 
-# 5. Release all Elastic IPs
-echo "5️⃣ Releasing Elastic IPs..."
-EIP_ALLOCS=$(aws ec2 describe-addresses --region "$REGION" --query 'Addresses[].AllocationId' --output text 2>/dev/null)
-for ALLOC_ID in $EIP_ALLOCS; do
-  echo "  Releasing EIP: $ALLOC_ID"
-  aws ec2 release-address --allocation-id "$ALLOC_ID" --region "$REGION" 2>/dev/null || true
+
+
+# 5. Unmap and release all Elastic IPs associated with the VPC (zonder jq)
+echo "5️⃣ Unmapping and releasing Elastic IPs..."
+EIPS=$(aws ec2 describe-addresses --region "$REGION" --query "Addresses[?VpcId=='$VPC_ID']" --output text 2>/dev/null)
+for LINE in $EIPS; do
+  ALLOC_ID=$(echo $LINE | awk '{print $7}')
+  ASSOC_ID=$(echo $LINE | awk '{print $8}')
+  if [ -n "$ASSOC_ID" ] && [ "$ASSOC_ID" != "None" ]; then
+    echo "  Unmapping EIP association: $ASSOC_ID"
+    aws ec2 disassociate-address --association-id "$ASSOC_ID" --region "$REGION" 2>/dev/null || true
+  fi
+  if [ -n "$ALLOC_ID" ] && [ "$ALLOC_ID" != "None" ]; then
+    echo "  Releasing EIP: $ALLOC_ID"
+    aws ec2 release-address --allocation-id "$ALLOC_ID" --region "$REGION" 2>/dev/null || true
+  fi
 done
+
+# 5b. Detach and delete Internet Gateway
+echo "5️⃣b Detaching and deleting Internet Gateway..."
+IGW_ID=$(aws ec2 describe-internet-gateways --region "$REGION" --filters "Name=attachment.vpc-id,Values=$VPC_ID" --query 'InternetGateways[0].InternetGatewayId' --output text 2>/dev/null)
+if [ -n "$IGW_ID" ] && [ "$IGW_ID" != "None" ]; then
+  echo "  Detaching IGW $IGW_ID from VPC $VPC_ID"
+  aws ec2 detach-internet-gateway --internet-gateway-id "$IGW_ID" --vpc-id "$VPC_ID" --region "$REGION" 2>/dev/null || true
+  sleep 5
+  echo "  Deleting IGW $IGW_ID"
+  aws ec2 delete-internet-gateway --internet-gateway-id "$IGW_ID" --region "$REGION" 2>/dev/null || true
+fi
 
 # 6. Delete all ENIs in VPC
 echo "6️⃣ Force deleting ENIs..."

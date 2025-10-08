@@ -48,6 +48,79 @@ jobs:
         run: |
           chmod +x ./cleanup-ecr.sh
           ./cleanup-ecr.sh
+      
+      - name: Cleanup ALB and Network Interfaces
+        run: |
+          echo "🔧 Cleaning up ALB and Network Interfaces..."
+          
+          # Get VPC ID
+          VPC_ID=$(aws ec2 describe-vpcs --region eu-central-1 --filters "Name=tag:Name,Values=casestudy2-dev-vpc" --query 'Vpcs[0].VpcId' --output text 2>/dev/null || echo "")
+          
+          if [ -n "$VPC_ID" ] && [ "$VPC_ID" != "None" ]; then
+            echo "Found VPC: $VPC_ID"
+            
+            # Delete all ALBs in the VPC
+            echo "Deleting Application Load Balancers..."
+            ALBS=$(aws elbv2 describe-load-balancers --region eu-central-1 --query "LoadBalancers[?VpcId=='$VPC_ID'].LoadBalancerArn" --output text 2>/dev/null)
+            for ALB in $ALBS; do
+              echo "  Deleting ALB: $ALB"
+              aws elbv2 delete-load-balancer --load-balancer-arn "$ALB" --region eu-central-1 2>/dev/null || true
+            done
+            
+            if [ -n "$ALBS" ]; then
+              echo "  Waiting 2 minutes for ALBs to be deleted..."
+              sleep 120
+            fi
+            
+            # Delete Target Groups
+            echo "Deleting Target Groups..."
+            TGS=$(aws elbv2 describe-target-groups --region eu-central-1 --query "TargetGroups[?VpcId=='$VPC_ID'].TargetGroupArn" --output text 2>/dev/null)
+            for TG in $TGS; do
+              echo "  Deleting TG: $TG"
+              aws elbv2 delete-target-group --target-group-arn "$TG" --region eu-central-1 2>/dev/null || true
+            done
+            
+            # Force delete ENIs that are still attached
+            echo "Force deleting Network Interfaces..."
+            SUBNETS=$(aws ec2 describe-subnets --region eu-central-1 --filters "Name=vpc-id,Values=$VPC_ID" --query 'Subnets[].SubnetId' --output text 2>/dev/null)
+            for SUBNET in $SUBNETS; do
+              echo "  Checking subnet: $SUBNET"
+              ENIS=$(aws ec2 describe-network-interfaces --region eu-central-1 --filters "Name=subnet-id,Values=$SUBNET" --query 'NetworkInterfaces[].NetworkInterfaceId' --output text 2>/dev/null)
+              for ENI in $ENIS; do
+                echo "    Detaching ENI: $ENI"
+                ATTACHMENT_ID=$(aws ec2 describe-network-interfaces --region eu-central-1 --network-interface-ids "$ENI" --query 'NetworkInterfaces[0].Attachment.AttachmentId' --output text 2>/dev/null)
+                if [ -n "$ATTACHMENT_ID" ] && [ "$ATTACHMENT_ID" != "None" ]; then
+                  aws ec2 detach-network-interface --attachment-id "$ATTACHMENT_ID" --region eu-central-1 --force 2>/dev/null || true
+                  sleep 5
+                fi
+                echo "    Deleting ENI: $ENI"
+                aws ec2 delete-network-interface --network-interface-id "$ENI" --region eu-central-1 2>/dev/null || true
+              done
+            done
+            
+            # Release Elastic IPs
+            echo "Releasing Elastic IPs..."
+            EIPS=$(aws ec2 describe-addresses --region eu-central-1 --query "Addresses[?VpcId=='$VPC_ID']" --output json 2>/dev/null)
+            echo "$EIPS" | jq -r '.[]' | while read -r eip; do
+              ASSOC_ID=$(echo "$eip" | jq -r '.AssociationId // empty')
+              ALLOC_ID=$(echo "$eip" | jq -r '.AllocationId')
+              
+              if [ -n "$ASSOC_ID" ]; then
+                echo "  Disassociating EIP: $ASSOC_ID"
+                aws ec2 disassociate-address --association-id "$ASSOC_ID" --region eu-central-1 2>/dev/null || true
+              fi
+              
+              if [ -n "$ALLOC_ID" ]; then
+                echo "  Releasing EIP: $ALLOC_ID"
+                aws ec2 release-address --allocation-id "$ALLOC_ID" --region eu-central-1 2>/dev/null || true
+              fi
+            done
+            
+            echo "✅ ALB and Network cleanup complete"
+          else
+            echo "⚠️ VPC not found, skipping ALB cleanup"
+          fi
+        continue-on-error: true
         
       - name: Cleanup Network Dependencies
         run: |

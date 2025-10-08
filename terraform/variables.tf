@@ -52,3 +52,56 @@ variable "enable_vpn" {
   type        = bool
   default     = true  # Enabled for Fontys Netlab connectivity
 }
+
+# On-Premises Webserver Configuration
+variable "onprem_webserver_ip" {
+  description = "IP address of on-premises webserver"
+  type        = string
+  default     = "192.168.154.13"
+}
+
+variable "onprem_webserver_username" {
+  description = "Username for on-premises webserver authentication"
+  type        = string
+  default     = "admin"
+  sensitive   = true
+}
+
+variable "onprem_webserver_password" {
+  description = "Password for on-premises webserver authentication"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+# DNS Configuration
+variable "monitoring_service_ip" {
+  description = "IP address of monitoring service (Prometheus/Grafana)"
+  type        = string
+  default     = "10.0.0.100"  # Internal IP, adjust if needed
+}
+
+variable "onprem_dns_ip" {
+  description = "IP address of on-premises DNS server"
+  type        = string
+  default     = ""  # Leave empty if not using on-premises DNS
+}
+
+variable "onprem_dns_domain" {
+  description = "Domain name for on-premises DNS forwarding"
+  type        = string
+  default     = "fontysict.nl"
+}
+
+# Client VPN Configuration
+variable "enable_client_vpn" {
+  description = "Enable Client VPN for remote access to monitoring"
+  type        = bool
+  default     = true
+}
+
+variable "client_vpn_cidr" {
+  description = "CIDR block for Client VPN users"
+  type        = string
+  default     = "172.16.0.0/22"  # VPN client IP range
+}
