@@ -206,7 +206,7 @@ resource "aws_lambda_function" "remediate" {
     variables = {
       ENVIRONMENT     = var.environment
       DYNAMODB_TABLE  = aws_dynamodb_table.events.name
-      ALB_ENDPOINT    = "http://${aws_lb.soar_alb.dns_name}/api/remediate"
+      ALB_ENDPOINT    = "http://${aws_lb.main.dns_name}/api/remediate"
       LOG_LEVEL       = "INFO"
     }
   }

@@ -59,7 +59,7 @@ resource "aws_vpc_endpoint" "route53" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.route53resolver"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = concat(aws_subnet.private[*].id, aws_subnet.lambda[*].id)
+  subnet_ids          = concat(aws_subnet.private[*].id, [aws_subnet.alb_private.id], [aws_subnet.lambda_private.id])
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
