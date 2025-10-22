@@ -31,8 +31,62 @@ jobs:
         with:
           terraform_version: 1.6.0
       
-      - name: Deploy Infrastructure
+      name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'lambda/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920120424621:role/githubrepo
+          aws-region: eu-central-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+      
+      - name: Get Ubuntu IAM Credentials
         working-directory: ./terraform
         run: |
-          terraform init
-          terraform apply -auto-approve
+          echo "🔐 Ubuntu Server IAM Credentials:"
+          echo "=================================="
+          terraform output -raw ubuntu_user_access_key_id
+          echo ""
+          terraform output -raw ubuntu_user_secret_access_key
+          echo ""
+          echo "Role ARN:"
+          terraform output -raw ubuntu_eventbridge_role_arn
