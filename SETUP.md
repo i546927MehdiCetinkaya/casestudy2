@@ -62,7 +62,7 @@ sudo ./monitor.sh
 
 ```bash
 # Create service file
-sudo tee /etc/systemd/system/soar-monitor.service > /dev/null <<EOF
+sudo tee /etc/systemd/system/soar-monitor.service > /dev/null <<'EOF'
 [Unit]
 Description=SOAR Failed Login Monitor
 After=network.target
@@ -74,10 +74,17 @@ WorkingDirectory=/opt/soar-monitor
 ExecStart=/opt/soar-monitor/monitor.sh
 Restart=always
 RestartSec=10
+Environment="AWS_CONFIG_FILE=/root/.aws/config"
+Environment="AWS_SHARED_CREDENTIALS_FILE=/root/.aws/credentials"
 
 [Install]
 WantedBy=multi-user.target
 EOF
+
+# Kopieer AWS credentials naar root
+sudo mkdir -p /root/.aws
+sudo cp ~/.aws/config /root/.aws/
+sudo cp ~/.aws/credentials /root/.aws/
 
 # Enable and start service
 sudo systemctl daemon-reload
@@ -86,6 +93,9 @@ sudo systemctl start soar-monitor
 
 # Check status
 sudo systemctl status soar-monitor
+
+# View logs (live)
+sudo journalctl -u soar-monitor -f
 ```
 
 ## 5. Testen
