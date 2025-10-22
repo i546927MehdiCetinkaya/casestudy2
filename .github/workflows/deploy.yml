@@ -1,37 +1,4 @@
-name: Deploy Lambda SOAR
-
-on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment'
-        required: true
-        default: 'dev'
-
-env:
-  AWS_REGION: eu-central-1
-
-jobs:
-  deploy:
-    name: Deploy
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::920120424621:role/githubrepo
-          aws-region: eu-central-1
-      
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.0
-      
-      name: Deploy Infrastructure
+name: Deploy Infrastructure
 
 on:
   push:
@@ -79,14 +46,9 @@ jobs:
         working-directory: ./terraform
         run: terraform apply -auto-approve tfplan
       
-      - name: Get Ubuntu IAM Credentials
+      - name: Show Ubuntu EventBridge Role ARN
         working-directory: ./terraform
         run: |
-          echo "🔐 Ubuntu Server IAM Credentials:"
-          echo "=================================="
-          terraform output -raw ubuntu_user_access_key_id
-          echo ""
-          terraform output -raw ubuntu_user_secret_access_key
-          echo ""
-          echo "Role ARN:"
-          terraform output -raw ubuntu_eventbridge_role_arn
+          echo "🔐 Ubuntu Server IAM Role ARN:"
+          echo "=============================="
+          terraform output ubuntu_eventbridge_role_arn
