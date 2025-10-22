@@ -23,7 +23,7 @@ resource "aws_cloudwatch_event_target" "parser_queue" {
 }
 
 # SQS Queue Policy to allow EventBridge to send messages
-resource "aws_sqs_queue_policy" "parser_queue_eventbridge" {
+resource "aws_sqs_queue_policy" "parser_queue_eventbridge_v2" {
   queue_url = aws_sqs_queue.parser_queue.id
 
   policy = jsonencode({
