@@ -35,10 +35,10 @@ cat > /tmp/sqs-policy.json <<EOF
 EOF
 
 echo "Setting queue policy..."
-POLICY=$(cat /tmp/sqs-policy.json | jq -c .)
+POLICY=$(cat /tmp/sqs-policy.json)
 aws sqs set-queue-attributes \
   --queue-url "$QUEUE_URL" \
-  --attributes "{\"Policy\":\"$(echo $POLICY | sed 's/"/\\"/g')\"}" \
+  --attributes Policy="$POLICY" \
   --region eu-central-1
 
 if [ $? -eq 0 ]; then
