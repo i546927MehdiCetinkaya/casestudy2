@@ -7,7 +7,6 @@ AWS_REGION="eu-central-1"
 EVENT_BUS="default"
 EVENT_SOURCE="custom.security"
 EVENT_DETAIL_TYPE="Failed Login Attempt"
-ROLE_ARN="REPLACE_WITH_ROLE_ARN"  # Wordt ingevuld na terraform apply
 
 # Log file to monitor
 LOG_FILE="/var/log/auth.log"
@@ -75,28 +74,9 @@ tail -Fn0 "$LOG_FILE" | while read line; do
 EOF
 )
         
-        # Assume role and send to EventBridge
-        echo "   📤 Sending to EventBridge via AssumeRole..."
+        # Send directly to EventBridge (using SSO credentials)
+        echo "   📤 Sending to EventBridge..."
         
-        # Assume role (credentials cached for 1 hour)
-        TEMP_CREDS=$(aws sts assume-role \
-          --role-arn "$ROLE_ARN" \
-          --role-session-name "ubuntu-monitor-$(date +%s)" \
-          --duration-seconds 3600 \
-          --region "$AWS_REGION" 2>&1)
-        
-        if [ $? -ne 0 ]; then
-            echo "   ❌ Failed to assume role: $TEMP_CREDS"
-            logger -t soar-monitor "Failed to assume role: $TEMP_CREDS"
-            continue
-        fi
-        
-        # Extract credentials
-        export AWS_ACCESS_KEY_ID=$(echo "$TEMP_CREDS" | jq -r '.Credentials.AccessKeyId')
-        export AWS_SECRET_ACCESS_KEY=$(echo "$TEMP_CREDS" | jq -r '.Credentials.SecretAccessKey')
-        export AWS_SESSION_TOKEN=$(echo "$TEMP_CREDS" | jq -r '.Credentials.SessionToken')
-        
-        # Send to EventBridge with assumed role credentials
         result=$(aws events put-events \
           --entries "$event_json" \
           --region "$AWS_REGION" 2>&1)
@@ -108,9 +88,6 @@ EOF
             echo "   ❌ Failed to send event: $result"
             logger -t soar-monitor "Failed to send event: $result"
         fi
-        
-        # Clear credentials
-        unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
         
         echo ""
     fi
