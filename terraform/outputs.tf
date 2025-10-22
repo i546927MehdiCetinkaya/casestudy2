@@ -52,8 +52,3 @@ output "vpn_status" {
   description = "VPN Connection Status"
   value       = var.enable_vpn ? "Enabled" : "Disabled"
 }
-
-output "client_vpn_endpoint" {
-  description = "Client VPN Endpoint ID"
-  value       = var.enable_client_vpn ? aws_ec2_client_vpn_endpoint.main[0].id : null
-}
