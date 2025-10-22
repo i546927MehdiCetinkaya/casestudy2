@@ -1,0 +1,7 @@
+[
+  {
+    "DetailType": "Security Event",
+    "Source": "custom.security",
+    "Detail": "{\"eventType\":\"failed_login\",\"timestamp\":\"2025-10-22T08:15:00Z\",\"sourceIP\":\"192.168.154.50\",\"username\":\"admin\",\"attemptCount\":5,\"service\":\"SSH\",\"severity\":\"HIGH\",\"description\":\"Multiple failed login attempts detected from Fontys Netlab\"}"
+  }
+]
