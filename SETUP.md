@@ -8,8 +8,17 @@ Quick setup guide voor Ubuntu server 192.168.154.13
 # Update systeem
 sudo apt update && sudo apt upgrade -y
 
-# Installeer AWS CLI en jq
-sudo apt install awscli jq -y
+# Installeer jq
+sudo apt install jq unzip curl -y
+
+# Installeer AWS CLI v2 (voor Ubuntu 24.04)
+cd /tmp
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+
+# Of gebruik snap (met --classic flag):
+# sudo snap install aws-cli --classic
 
 # Verificatie
 aws --version
