@@ -33,13 +33,21 @@ def lambda_handler(event, context):
             try:
                 # Parse SQS message
                 message_body = json.loads(record['body'])
+                logger.info(f"Message body: {json.dumps(message_body)}")
                 
-                # Extract CloudTrail event details
-                event_detail = message_body.get('detail', {})
-                event_name = event_detail.get('eventName', 'Unknown')
-                event_source = event_detail.get('eventSource', 'Unknown')
+                # Extract event details - support multiple formats
+                # Format 1: EventBridge format with 'detail'
+                event_detail = message_body.get('detail', message_body)
+                
+                # Format 2: Direct event format (for testing)
+                if not event_detail or event_detail == {}:
+                    event_detail = message_body
+                
+                # Extract event information
+                event_name = event_detail.get('eventName', event_detail.get('eventType', 'Unknown'))
+                event_source = event_detail.get('eventSource', event_detail.get('source', 'Unknown'))
                 user_identity = event_detail.get('userIdentity', {})
-                source_ip = event_detail.get('sourceIPAddress', 'Unknown')
+                source_ip = event_detail.get('sourceIPAddress', event_detail.get('sourceIP', 'Unknown'))
                 
                 # Create normalized event
                 event_id = str(uuid4())
@@ -54,7 +62,8 @@ def lambda_handler(event, context):
                     'user_identity': user_identity,
                     'raw_event': json.dumps(event_detail),
                     'status': 'parsed',
-                    'severity': classify_severity(event_name, event_source)
+                    'severity': event_detail.get('severity', classify_severity(event_name, event_source)),
+                    'description': event_detail.get('description', f'Event {event_name} from {event_source}')
                 }
                 
                 # Store in DynamoDB
@@ -107,6 +116,14 @@ def classify_severity(event_name, event_source):
     """
     Classify event severity based on event name and source
     """
+    # Security event types
+    if 'failed_login' in event_name.lower():
+        return 'HIGH'
+    
+    if 'brute_force' in event_name.lower() or 'unauthorized' in event_name.lower():
+        return 'CRITICAL'
+    
+    # CloudTrail high risk events
     high_risk_events = [
         'DeleteBucket', 'DeleteTrail', 'StopLogging',
         'PutBucketPolicy', 'CreateAccessKey', 'DeleteUser',
