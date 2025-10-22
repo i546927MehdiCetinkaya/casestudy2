@@ -150,21 +150,3 @@ output "vpn_tunnel2_preshared_key" {
   value       = var.enable_vpn ? aws_vpn_connection.main[0].tunnel2_preshared_key : null
   sensitive   = true
 }
-
-output "vpn_status" {
-  description = "VPN connection status"
-  value = var.enable_vpn ? {
-    enabled              = true
-    onprem_network       = var.onprem_cidr
-    onprem_public_ip     = var.onprem_public_ip
-    aws_vpc_cidr         = var.vpc_cidr
-    tunnel1_address      = aws_vpn_connection.main[0].tunnel1_address
-    tunnel2_address      = aws_vpn_connection.main[0].tunnel2_address
-    connection_id        = aws_vpn_connection.main[0].id
-    customer_gateway_id  = aws_customer_gateway.onprem[0].id
-    vpn_gateway_id       = aws_vpn_gateway.main[0].id
-  } : {
-    enabled = false
-    message = "VPN is disabled. Set var.enable_vpn=true and configure onprem_public_ip to enable."
-  }
-}
