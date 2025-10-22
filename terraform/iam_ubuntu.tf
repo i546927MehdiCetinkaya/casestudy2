@@ -1,5 +1,5 @@
 # IAM Role voor Ubuntu server EventBridge access
-# Dit role kan worden assumed door SSO users en GitHub OIDC vanaf IP 192.168.154.13
+# Dit role kan worden assumed door SSO users vanaf IP 192.168.154.13
 
 resource "aws_iam_role" "ubuntu_eventbridge" {
   name               = "${var.project_name}-${var.environment}-ubuntu-eventbridge"
@@ -10,15 +10,15 @@ resource "aws_iam_role" "ubuntu_eventbridge" {
       {
         Effect = "Allow"
         Principal = {
-          AWS = [
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/githubrepo",
-            "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-reserved/sso.amazonaws.com/eu-central-1/AWSReservedSSO_fictisb_IsbUsersPS_2f9b7e07b8441d9f"
-          ]
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
         }
         Action = "sts:AssumeRole"
         Condition = {
           IpAddress = {
-            "aws:SourceIp" = "192.168.154.13/32"
+            "aws:SourceIp" = [
+              "192.168.154.13/32",
+              "192.168.154.0/24"
+            ]
           }
         }
       }
