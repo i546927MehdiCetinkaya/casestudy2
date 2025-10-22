@@ -20,23 +20,6 @@ resource "aws_cloudwatch_event_target" "parser_queue" {
   rule      = aws_cloudwatch_event_rule.security_events.name
   target_id = "ParserQueue"
   arn       = aws_sqs_queue.parser_queue.arn
-
-  input_transformer {
-    input_paths = {
-      detail     = "$.detail"
-      time       = "$.time"
-      source     = "$.source"
-      detailType = "$.detail-type"
-    }
-    input_template = <<EOF
-{
-  "event": <detail>,
-  "timestamp": "<time>",
-  "source": "<source>",
-  "type": "<detailType>"
-}
-EOF
-  }
 }
 
 # SQS Queue Policy to allow EventBridge to send messages
