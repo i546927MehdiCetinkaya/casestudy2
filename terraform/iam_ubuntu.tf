@@ -56,6 +56,3 @@ output "ubuntu_eventbridge_role_arn" {
   value       = aws_iam_role.ubuntu_eventbridge.arn
   description = "ARN van het Ubuntu EventBridge role"
 }
-
-# Data source voor account ID
-data "aws_caller_identity" "current" {}
