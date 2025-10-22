@@ -1,0 +1,38 @@
+name: Deploy Lambda SOAR
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        required: true
+        default: 'dev'
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920120424621:role/githubrepo
+          aws-region: eu-central-1
+      
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+      
+      - name: Deploy Infrastructure
+        working-directory: ./terraform
+        run: |
+          terraform init
+          terraform apply -auto-approve
