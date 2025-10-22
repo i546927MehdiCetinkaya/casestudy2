@@ -46,9 +46,16 @@ jobs:
         working-directory: ./terraform
         run: terraform apply -auto-approve tfplan
       
-      - name: Show Ubuntu EventBridge Role ARN
+      - name: Show Deployment Info
         working-directory: ./terraform
         run: |
-          echo "🔐 Ubuntu Server IAM Role ARN:"
-          echo "=============================="
-          terraform output ubuntu_eventbridge_role_arn
+          echo "✅ Deployment complete!"
+          echo ""
+          echo "📊 Resources deployed:"
+          echo "- Lambda Functions: 4 (parser, engine, notify, remediate)"
+          echo "- DynamoDB Table: casestudy2-dev-events"
+          echo "- SNS Topic: casestudy2-dev-security-alerts"
+          echo "- EventBridge Rules: Active"
+          echo ""
+          echo "🔔 IMPORTANT: Check your email (mehdicetinkaya6132@gmail.com)"
+          echo "   for SNS subscription confirmation and click the link!"
