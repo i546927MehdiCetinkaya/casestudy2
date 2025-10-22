@@ -133,7 +133,7 @@ resource "aws_sns_topic" "security_alerts" {
 resource "aws_sns_topic_subscription" "security_alerts_email" {
   topic_arn = aws_sns_topic.security_alerts.arn
   protocol  = "email"
-  endpoint  = "security-team@example.com"  # Change this to your email
+  endpoint  = "mehdicetinkaya6132@gmail.com"
 }
 
 # EventBridge Rule for CloudTrail Events
