@@ -7,8 +7,7 @@ resource "aws_cloudwatch_event_rule" "security_events" {
   description = "Capture security events for SOAR processing"
 
   event_pattern = jsonencode({
-    source      = ["custom.security", "aws.guardduty", "aws.securityhub"]
-    detail-type = ["Security Event", "GuardDuty Finding", "Security Hub Finding"]
+    source = ["custom.security", "aws.guardduty", "aws.securityhub"]
   })
 
   tags = {
