@@ -48,19 +48,14 @@ aws sts get-caller-identity
 sudo mkdir -p /opt/soar-monitor
 cd /opt/soar-monitor
 
-# Download script (vervang USERNAME en TOKEN)
+# Download script
 curl -o monitor.sh https://raw.githubusercontent.com/i546927MehdiCetinkaya/casestudy2/main/scripts/ubuntu-monitor-failed-logins.sh
-
-# Of upload via SCP:
-# scp scripts/ubuntu-monitor-failed-logins.sh user@192.168.154.13:/tmp/
-# sudo mv /tmp/ubuntu-monitor-failed-logins.sh /opt/soar-monitor/monitor.sh
-
-# Update ROLE_ARN in script (check GitHub Actions output)
-ROLE_ARN="arn:aws:iam::920120424621:role/casestudy2-dev-ubuntu-eventbridge"
-sudo sed -i "s|REPLACE_WITH_ROLE_ARN|$ROLE_ARN|g" /opt/soar-monitor/monitor.sh
 
 # Maak executable
 sudo chmod +x /opt/soar-monitor/monitor.sh
+
+# Test script (gebruik Ctrl+C om te stoppen)
+sudo ./monitor.sh
 ```
 
 ## 4. Systemd Service aanmaken
