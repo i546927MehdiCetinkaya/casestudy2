@@ -4,6 +4,7 @@
 
 # AWS Configuration
 AWS_REGION="eu-central-1"
+AWS_PROFILE="fictisb_IsbUsersPS-920120424621"
 EVENT_BUS="default"
 EVENT_SOURCE="custom.security"
 EVENT_DETAIL_TYPE="Failed Login Attempt"
@@ -79,7 +80,8 @@ EOF
         
         result=$(aws events put-events \
           --entries "$event_json" \
-          --region "$AWS_REGION" 2>&1)
+          --region "$AWS_REGION" \
+          --profile "$AWS_PROFILE" 2>&1)
         
         if [ $? -eq 0 ]; then
             echo "   ✅ Event sent successfully!"
