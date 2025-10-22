@@ -6,7 +6,6 @@ resource "aws_vpc" "main" {
 
   tags = {
     Name = "${var.project_name}-${var.environment}-vpc"
-    "kubernetes.io/cluster/${var.project_name}-${var.environment}-eks" = "shared"
   }
 }
 
@@ -20,12 +19,10 @@ resource "aws_subnet" "public" {
 
   tags = {
     Name = "${var.project_name}-${var.environment}-public-${count.index + 1}"
-    "kubernetes.io/cluster/${var.project_name}-${var.environment}-eks" = "shared"
-    "kubernetes.io/role/elb" = "1"
   }
 }
 
-# Private Subnets for EKS (AZ A and AZ B)
+# Private Subnets (for future use)
 resource "aws_subnet" "private" {
   count             = 2
   vpc_id            = aws_vpc.main.id
@@ -34,19 +31,6 @@ resource "aws_subnet" "private" {
 
   tags = {
     Name = "${var.project_name}-${var.environment}-private-${count.index + 1}"
-    "kubernetes.io/cluster/${var.project_name}-${var.environment}-eks" = "shared"
-    "kubernetes.io/role/internal-elb" = "1"
-  }
-}
-
-# ALB Private Subnet (AZ A only)
-resource "aws_subnet" "alb_private" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 8, 30)
-  availability_zone = data.aws_availability_zones.available.names[0]  # AZ A
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-alb-private-az-a"
   }
 }
 
@@ -120,20 +104,6 @@ resource "aws_route_table" "private" {
   }
 }
 
-# Route Table for ALB Private Subnet (AZ A)
-resource "aws_route_table" "alb_private" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[0].id  # Use NAT in AZ A
-  }
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-alb-private-rt-az-a"
-  }
-}
-
 # Route Table for Lambda Private Subnet (AZ A)
 resource "aws_route_table" "lambda_private" {
   vpc_id = aws_vpc.main.id
@@ -159,11 +129,6 @@ resource "aws_route_table_association" "private" {
   count          = 2
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = aws_route_table.private[count.index].id
-}
-
-resource "aws_route_table_association" "alb_private" {
-  subnet_id      = aws_subnet.alb_private.id
-  route_table_id = aws_route_table.alb_private.id
 }
 
 resource "aws_route_table_association" "lambda_private" {

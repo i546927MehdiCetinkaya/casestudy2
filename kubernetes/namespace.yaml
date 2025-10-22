@@ -1,7 +1,0 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: soar-system
-  labels:
-    name: soar-system
-    environment: dev

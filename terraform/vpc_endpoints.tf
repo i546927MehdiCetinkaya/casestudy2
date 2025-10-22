@@ -36,7 +36,6 @@ resource "aws_vpc_endpoint" "s3" {
   route_table_ids = concat(
     [aws_route_table.public.id],
     aws_route_table.private[*].id,
-    [aws_route_table.alb_private.id],
     [aws_route_table.lambda_private.id]
   )
 
@@ -53,7 +52,6 @@ resource "aws_vpc_endpoint" "dynamodb" {
   route_table_ids = concat(
     [aws_route_table.public.id],
     aws_route_table.private[*].id,
-    [aws_route_table.alb_private.id],
     [aws_route_table.lambda_private.id]
   )
 
@@ -109,68 +107,12 @@ resource "aws_vpc_endpoint" "lambda" {
   vpc_id              = aws_vpc.main.id
   service_name        = "com.amazonaws.${var.aws_region}.lambda"
   vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id  # Only use private[0] (AZ A) and private[1] (AZ B)
+  subnet_ids          = aws_subnet.private[*].id
   security_group_ids  = [aws_security_group.vpc_endpoints.id]
   private_dns_enabled = true
 
   tags = {
     Name = "${var.project_name}-${var.environment}-lambda-endpoint"
-  }
-}
-
-# ECR API Interface Endpoint (for pulling container images)
-resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-ecr-api-endpoint"
-  }
-}
-
-# ECR DKR Interface Endpoint (for Docker registry operations)
-resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-ecr-dkr-endpoint"
-  }
-}
-
-# EKS Interface Endpoint
-resource "aws_vpc_endpoint" "eks" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.aws_region}.eks"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-eks-endpoint"
-  }
-}
-
-# EC2 Interface Endpoint (for EKS nodes)
-resource "aws_vpc_endpoint" "ec2" {
-  vpc_id              = aws_vpc.main.id
-  service_name        = "com.amazonaws.${var.aws_region}.ec2"
-  vpc_endpoint_type   = "Interface"
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  private_dns_enabled = true
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-ec2-endpoint"
   }
 }
 
