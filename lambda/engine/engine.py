@@ -20,6 +20,35 @@ NOTIFY_QUEUE_URL = os.environ.get('NOTIFY_QUEUE_URL')
 DYNAMODB_TABLE = os.environ.get('DYNAMODB_TABLE')
 RDS_SECRET_ARN = os.environ.get('RDS_SECRET_ARN')
 
+def count_recent_failed_logins(source_ip, event_type):
+    """
+    Count failed login attempts from an IP in the last 10 minutes
+    """
+    try:
+        table = dynamodb.Table(DYNAMODB_TABLE)
+        current_time = int(datetime.utcnow().timestamp())
+        ten_minutes_ago = current_time - 600  # 10 minutes
+        
+        # Query DynamoDB for recent failed logins from this IP
+        response = table.scan(
+            FilterExpression='source_ip = :ip AND event_name IN (:evt1, :evt2) AND #ts >= :time',
+            ExpressionAttributeNames={'#ts': 'timestamp'},
+            ExpressionAttributeValues={
+                ':ip': source_ip,
+                ':evt1': 'failed_login',
+                ':evt2': 'web_login_failed',
+                ':time': Decimal(str(ten_minutes_ago))
+            }
+        )
+        
+        count = response.get('Count', 0)
+        logger.info(f"Found {count} recent failed logins from {source_ip}")
+        return count
+        
+    except Exception as e:
+        logger.error(f"Error counting failed logins: {str(e)}")
+        return 0
+
 def lambda_handler(event, context):
     """
     Engine Lambda Function
@@ -135,6 +164,21 @@ def analyze_event(event_data):
         'LOW': 10
     }
     risk_score += severity_scores.get(severity, 0)
+    
+    # Brute force detection - check for repeated failed logins
+    if event_name in ['failed_login', 'web_login_failed'] and source_ip != 'Unknown':
+        failed_attempts = count_recent_failed_logins(source_ip, event_name)
+        logger.info(f"IP {source_ip} has {failed_attempts} recent failed login attempts")
+        
+        # Escalate risk based on number of attempts
+        if failed_attempts >= 5:
+            risk_score += 50  # Critical brute force
+            severity = 'HIGH'
+        elif failed_attempts >= 3:
+            risk_score += 30  # Likely brute force
+            severity = 'HIGH'
+        elif failed_attempts >= 2:
+            risk_score += 15  # Suspicious activity
     
     # Check for suspicious patterns
     suspicious_ips = ['0.0.0.0', '127.0.0.1']  # Add known malicious IPs
