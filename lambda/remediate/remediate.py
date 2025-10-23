@@ -12,7 +12,6 @@ logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 # AWS clients
 dynamodb = boto3.resource('dynamodb')
 iam = boto3.client('iam')
-ec2 = boto3.client('ec2')
 s3 = boto3.client('s3')
 
 # Environment variables
@@ -98,9 +97,6 @@ def execute_remediation(action, event_data):
         if action == 'SUSPEND_USER':
             return suspend_iam_user(event_data)
         
-        elif action == 'BLOCK_IP':
-            return block_ip_address(event_data)
-        
         elif action == 'ROLLBACK_CHANGES':
             return rollback_changes(event_data)
         
@@ -170,39 +166,6 @@ def suspend_iam_user(event_data):
     except Exception as e:
         return {
             'action': 'SUSPEND_USER',
-            'status': 'failed',
-            'error': str(e)
-        }
-
-def block_ip_address(event_data):
-    """
-    Block IP address by adding to NACL deny rule
-    """
-    try:
-        source_ip = event_data.get('source_ip')
-        
-        if not source_ip or source_ip == 'Unknown':
-            return {
-                'action': 'BLOCK_IP',
-                'status': 'skipped',
-                'message': 'No valid IP address found in event'
-            }
-        
-        # In production: Add IP to Network ACL deny rule
-        logger.info(f"Would block IP address {source_ip}")
-        
-        return {
-            'action': 'BLOCK_IP',
-            'status': 'success',
-            'message': f'IP {source_ip} blocked',
-            'details': {
-                'ip_address': source_ip
-            }
-        }
-        
-    except Exception as e:
-        return {
-            'action': 'BLOCK_IP',
             'status': 'failed',
             'error': str(e)
         }

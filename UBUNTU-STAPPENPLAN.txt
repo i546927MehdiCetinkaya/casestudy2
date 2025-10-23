@@ -1,0 +1,291 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                 UBUNTU SERVER SETUP STAPPENPLAN                          ║
+║                    Voor SOAR Failed Login Monitoring                     ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+📝 STAP 1: SSH naar je Ubuntu Server
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Gebruik de SSH terminal in VS Code of:
+    ssh ubuntu@<IP-ADRES>
+
+
+🔧 STAP 2: Installeer Dependencies
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    sudo apt update
+    sudo apt install awscli jq -y
+
+    # Verificatie:
+    aws --version    # Moet AWS CLI versie tonen
+    jq --version     # Moet jq versie tonen
+
+
+🔑 STAP 3: Configureer AWS Credentials
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    aws configure
+
+    Vul in:
+    ┌────────────────────────────────────────────────────────────┐
+    │ AWS Access Key ID: <JE ACCESS KEY>                        │
+    │ AWS Secret Access Key: <JE SECRET KEY>                    │
+    │ Default region name: eu-central-1                         │
+    │ Default output format: json                               │
+    └────────────────────────────────────────────────────────────┘
+
+    # Test de verbinding:
+    aws sts get-caller-identity --region eu-central-1
+
+    ✅ Als het werkt, zie je je AWS Account ID en User ARN
+
+
+✅ STAP 4: Test EventBridge Access
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Check of je EventBridge kunt benaderen
+    aws events list-event-buses --region eu-central-1
+
+    # Stuur een test event
+    aws events put-events \
+      --entries '[{
+        "Source": "custom.security",
+        "DetailType": "Test Event",
+        "Detail": "{\"test\":\"true\"}",
+        "EventBusName": "default"
+      }]' \
+      --region eu-central-1
+
+    ✅ Als het werkt, zie je: "FailedEntryCount": 0
+
+
+📝 STAP 5: Kopieer Monitoring Script naar Server
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    OPTIE A: SCP vanaf je Windows machine
+    ─────────────────────────────────────
+    # In PowerShell op Windows:
+    scp scripts\ubuntu-monitor-failed-logins.sh ubuntu@<IP>:~/
+
+    # Dan op Ubuntu server:
+    sudo mv ~/ubuntu-monitor-failed-logins.sh /usr/local/bin/monitor-failed-logins.sh
+
+
+    OPTIE B: Handmatig kopiëren
+    ───────────────────────────
+    # Op Ubuntu server:
+    sudo nano /usr/local/bin/monitor-failed-logins.sh
+    
+    # Plak de inhoud van scripts/ubuntu-monitor-failed-logins.sh
+    # Save met: Ctrl+O, Enter, Ctrl+X
+
+
+    # Maak executable:
+    sudo chmod +x /usr/local/bin/monitor-failed-logins.sh
+
+
+🧪 STAP 6: Test Script Handmatig
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Start het script (laat draaien)
+    sudo /usr/local/bin/monitor-failed-logins.sh
+
+    Je moet zien:
+    ┌─────────────────────────────────────────────────┐
+    │ 🔍 Starting Ubuntu Failed Login Monitor...      │
+    │ Monitoring: /var/log/auth.log                   │
+    │ Region: eu-central-1                            │
+    │ ✅ AWS CLI en jq gevonden                       │
+    │ ✅ Log file gevonden                            │
+    │ 🚀 Start monitoring...                          │
+    └─────────────────────────────────────────────────┘
+
+
+🔥 STAP 7: Trigger een Failed Login (Test)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Open een TWEEDE SSH terminal naar dezelfde server
+    # Probeer in te loggen met verkeerd wachtwoord:
+    ssh testuser@localhost
+    # Type een verkeerd wachtwoord (3x)
+
+    # In de EERSTE terminal (waar script draait) moet je zien:
+    ┌─────────────────────────────────────────────────┐
+    │ 🚨 Failed login detected:                       │
+    │    Time: 2025-10-23T15:30:00Z                   │
+    │    User: testuser                               │
+    │    IP: 127.0.0.1                                │
+    │    📤 Sending to EventBridge...                 │
+    │    ✅ Event sent successfully!                  │
+    └─────────────────────────────────────────────────┘
+
+    ✅ Als je dit ziet, WERKT HET! 🎉
+
+
+⚙️ STAP 8: Configureer als Systemd Service (Automatisch starten)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Stop het handmatige script eerst (Ctrl+C)
+
+    # Maak service file
+    sudo nano /etc/systemd/system/failed-login-monitor.service
+
+    # Plak:
+    ┌─────────────────────────────────────────────────────────────┐
+    │ [Unit]                                                      │
+    │ Description=Ubuntu Failed Login Monitor for AWS SOAR       │
+    │ After=network.target                                       │
+    │                                                             │
+    │ [Service]                                                   │
+    │ Type=simple                                                 │
+    │ User=root                                                   │
+    │ ExecStart=/usr/local/bin/monitor-failed-logins.sh         │
+    │ Restart=always                                              │
+    │ RestartSec=10                                               │
+    │ StandardOutput=journal                                      │
+    │ StandardError=journal                                       │
+    │                                                             │
+    │ [Install]                                                   │
+    │ WantedBy=multi-user.target                                  │
+    └─────────────────────────────────────────────────────────────┘
+
+    # Save: Ctrl+O, Enter, Ctrl+X
+
+    # Activeer de service:
+    sudo systemctl daemon-reload
+    sudo systemctl enable failed-login-monitor.service
+    sudo systemctl start failed-login-monitor.service
+
+    # Check status:
+    sudo systemctl status failed-login-monitor.service
+
+    ✅ Status moet "active (running)" zijn
+
+
+📊 STAP 9: Verificatie in AWS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Op je Windows machine of Ubuntu server:
+
+    # Check of event in DynamoDB staat
+    aws dynamodb scan \
+      --table-name soar-dev-events \
+      --region eu-central-1 \
+      --max-items 5
+
+    # Check Lambda logs
+    aws logs tail /aws/lambda/soar-dev-parser \
+      --region eu-central-1 --since 10m
+
+    # Of gebruik de test scripts:
+    bash scripts/check-soar-health.sh
+
+
+📧 STAP 10: Check SNS Notifications
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Als severity HIGH is, moet je een email ontvangen
+    # Check je email inbox (ook spam folder!)
+
+    ✅ Je zou een email moeten krijgen met subject:
+       "Security Alert - HIGH - failed_login"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 HANDIGE COMMANDO'S VOOR MONITORING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Service logs bekijken (live)
+    sudo journalctl -u failed-login-monitor.service -f
+
+    # Laatste 50 regels van service logs
+    sudo journalctl -u failed-login-monitor.service -n 50
+
+    # Auth log bekijken (waar failed logins staan)
+    sudo tail -f /var/log/auth.log
+
+    # Service herstarten
+    sudo systemctl restart failed-login-monitor.service
+
+    # Service stoppen
+    sudo systemctl stop failed-login-monitor.service
+
+    # Service starten
+    sudo systemctl start failed-login-monitor.service
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    PROBLEEM: "AWS CLI niet gevonden"
+    ──────────────────────────────────
+    sudo apt install awscli -y
+
+
+    PROBLEEM: "Permission denied" bij EventBridge
+    ─────────────────────────────────────────────
+    # Check credentials:
+    aws sts get-caller-identity --region eu-central-1
+    
+    # Herconfig:
+    aws configure
+
+
+    PROBLEEM: Events komen niet aan in AWS
+    ──────────────────────────────────────
+    # 1. Check service draait:
+    sudo systemctl status failed-login-monitor.service
+
+    # 2. Check logs voor errors:
+    sudo journalctl -u failed-login-monitor.service -n 100
+
+    # 3. Test AWS handmatig:
+    aws events put-events \
+      --entries '[{"Source":"test","DetailType":"test","Detail":"{}"}]' \
+      --region eu-central-1
+
+
+    PROBLEEM: Script crasht steeds
+    ──────────────────────────────
+    # Check logs:
+    sudo journalctl -u failed-login-monitor.service -n 100
+
+    # Test script handmatig:
+    sudo /usr/local/bin/monitor-failed-logins.sh
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ CHECKLIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    [ ] SSH verbinding met Ubuntu server
+    [ ] AWS CLI geïnstalleerd (aws --version werkt)
+    [ ] jq geïnstalleerd (jq --version werkt)
+    [ ] AWS credentials geconfigureerd (aws sts get-caller-identity werkt)
+    [ ] EventBridge toegang getest (aws events list-event-buses werkt)
+    [ ] Script gekopieerd naar /usr/local/bin/monitor-failed-logins.sh
+    [ ] Script is executable (chmod +x)
+    [ ] Script handmatig getest (zie output)
+    [ ] Failed login test gedaan (zie event in output)
+    [ ] Systemd service file aangemaakt
+    [ ] Service enabled (sudo systemctl enable)
+    [ ] Service started (sudo systemctl start)
+    [ ] Service status is "active (running)"
+    [ ] Event verschijnt in AWS DynamoDB
+    [ ] Lambda functions verwerken event (check logs)
+    [ ] SNS notificatie ontvangen (bij HIGH severity)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎉 Als alle stappen werken, heb je een VOLLEDIG WERKEND SOAR SYSTEEM! 🎉
+
+De flow is:
+Ubuntu Failed Login → EventBridge → SQS → Parser Lambda → Engine Lambda
+                                                              ↓
+                                                         (Bij HIGH severity)
+                                                              ↓
+                                                         Notify Lambda → SNS Email
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

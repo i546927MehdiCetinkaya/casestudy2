@@ -205,8 +205,6 @@ def analyze_event(event_data):
         if event_name in critical_events:
             recommended_actions.append('ROLLBACK_CHANGES')
             recommended_actions.append('SUSPEND_USER')
-        if source_ip in suspicious_ips:
-            recommended_actions.append('BLOCK_IP')
         recommended_actions.append('ALERT_SECURITY_TEAM')
     
     return {
