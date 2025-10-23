@@ -1,0 +1,141 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║              UBUNTU SERVER - EERSTE STAPPEN                              ║
+║          (Voor wanneer je GEEN IAM User kunt maken)                      ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+🔍 STAP 1: Check of Ubuntu server een EC2 instance is
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Snelle check:
+    curl -s http://169.254.169.254/latest/meta-data/instance-id
+
+    Als je een instance ID ziet (zoals i-0123456789abcdef):
+    ✅ HET IS EC2! → Gebruik IAM Role (makkelijk!)
+    
+    Als je "Connection timeout" of error ziet:
+    ❌ GEEN EC2 → Vraag school om IAM User
+
+
+    # Of gebruik automatische check:
+    bash scripts/check-server-type.sh
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Als HET IS EC2:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    📋 In AWS Console (op je Windows machine):
+    
+    1. IAM → Roles → Create role
+    2. Trusted entity: AWS service → EC2
+    3. Create policy (JSON):
+       {
+         "Version": "2012-10-17",
+         "Statement": [{
+           "Effect": "Allow",
+           "Action": ["events:PutEvents"],
+           "Resource": "*"
+         }]
+       }
+    4. Policy name: SOARMonitorEventBridgePolicy
+    5. Role name: SOAR-Ubuntu-Monitor-Role
+    6. EC2 → Instances → Je Ubuntu server → Actions → Security
+       → Modify IAM role → Selecteer de role
+
+
+    📋 Op Ubuntu Server:
+    
+    # Verwijder oude SSO credentials
+    rm -rf ~/.aws/credentials
+    
+    # Config alleen region (GEEN credentials!)
+    mkdir -p ~/.aws
+    echo "[default]
+    region = eu-central-1
+    output = json" > ~/.aws/config
+    
+    # Test - gebruikt automatisch EC2 role!
+    aws sts get-caller-identity --region eu-central-1
+    
+    # Je moet je role ARN zien, GEEN expired error! ✅
+    
+    # Test EventBridge
+    aws events put-events \
+      --entries '[{"Source":"test","DetailType":"test","Detail":"{}"}]' \
+      --region eu-central-1
+    
+    # Test monitoring
+    sudo /usr/local/bin/monitor-failed-logins.sh
+
+
+    ✅ KLAAR! De role blijft permanent, geen expiration!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Als GEEN EC2:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    Je hebt 2 opties:
+
+
+    OPTIE 1: Vraag school om IAM User te maken
+    ─────────────────────────────────────────
+
+    Vraag je docent/admin om:
+    
+    1. IAM User te maken: "soar-ubuntu-monitor"
+    2. Policy: events:PutEvents permission
+    3. Access Keys te genereren
+    4. De Access Key en Secret Key aan jou te geven
+    
+    Dan op Ubuntu:
+    
+    rm -rf ~/.aws/credentials
+    aws configure
+    # Vul Access Key en Secret Key in (GEEN session token!)
+
+
+    OPTIE 2: SSO Token Handmatig Refreshen (Niet ideaal)
+    ────────────────────────────────────────────────────
+
+    Elke keer als token expired:
+    
+    # Op Windows:
+    aws sso login --profile fictisb
+    aws configure export-credentials --profile fictisb
+    
+    # Kopieer nieuwe credentials naar Ubuntu
+    aws configure
+    # Plak Access Key, Secret Key EN Session Token
+    
+    ⚠️  NADEEL: Dit moet je elke paar uur herhalen!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 MEER INFO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    FIX-TOKEN-WITH-IAM-ROLE.md  - Volledige IAM Role guide
+    QUICK-FIX-TOKEN.md          - Alle opties uitgelegd
+    scripts/check-server-type.sh - Automatische server check
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 TL;DR:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    # Run dit op Ubuntu:
+    curl -s http://169.254.169.254/latest/meta-data/instance-id
+
+    # Als je instance ID ziet:
+    → Maak IAM Role
+    → Attach aan EC2
+    → rm ~/.aws/credentials
+    → ✅ Klaar!
+
+    # Als je error ziet:
+    → Vraag school om IAM User
+    → Of refresh SSO elke paar uur (niet ideaal)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

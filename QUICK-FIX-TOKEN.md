@@ -5,7 +5,86 @@ Je SSO session token is **expired**. SSO tokens zijn tijdelijk en niet geschikt 
 
 ---
 
-## ✅ OPLOSSING: Maak IAM User (5 minuten)
+## 🔍 EERST: Check of je Ubuntu server een EC2 instance is
+
+**Op Ubuntu server, run dit:**
+```bash
+curl -s http://169.254.169.254/latest/meta-data/instance-id && echo "✅ EC2!" || echo "❌ Geen EC2"
+```
+
+- **Als "✅ EC2!"** → Gebruik **OPTIE A: IAM Role** (Makkelijkst! ⭐)
+- **Als "❌ Geen EC2"** → Je moet vragen om IAM User of SSO gebruiken
+
+**Of gebruik het check script:**
+```bash
+bash scripts/check-server-type.sh
+```
+
+---
+
+## ⭐ OPTIE A: IAM Role voor EC2 Instance (AANBEVOLEN)
+
+### Als je Ubuntu server een EC2 instance is, is dit de BESTE oplossing!
+
+### Stap 1: Maak IAM Role
+
+1. **AWS Console** → **IAM** → **Roles** → **Create role**
+2. **Trusted entity**: AWS service
+3. **Use case**: EC2
+4. Click **Next**
+
+### Stap 2: Attach Policy
+
+1. Click **Create policy** (nieuw tabblad)
+2. Click **JSON**, plak:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": ["events:PutEvents"],
+    "Resource": "*"
+  }]
+}
+```
+3. **Policy name**: `SOARMonitorEventBridgePolicy`
+4. **Create policy**
+5. Ga terug, refresh, selecteer de policy
+6. **Role name**: `SOAR-Ubuntu-Monitor-Role`
+7. **Create role**
+
+### Stap 3: Attach Role aan EC2
+
+1. **EC2** → **Instances** → Selecteer je Ubuntu server
+2. **Actions** → **Security** → **Modify IAM role**
+3. Selecteer `SOAR-Ubuntu-Monitor-Role`
+4. **Update IAM role**
+
+### Stap 4: Configureer op Ubuntu (GEEN credentials!)
+
+```bash
+# Verwijder oude credentials
+rm -rf ~/.aws/credentials
+
+# Alleen config met region
+mkdir -p ~/.aws
+echo "[default]
+region = eu-central-1
+output = json" > ~/.aws/config
+
+# Test - gebruikt automatisch de EC2 role!
+aws sts get-caller-identity --region eu-central-1
+```
+
+**✅ Klaar! Geen expiration, werkt permanent!**
+
+Zie gedetailleerde instructies: **FIX-TOKEN-WITH-IAM-ROLE.md**
+
+---
+
+## 🔵 OPTIE B: Maak IAM User (5 minuten)
+
+### ⚠️ Alleen als je permission hebt om IAM Users te maken!
 
 ### 📋 STAP 1: Maak IAM User in AWS Console
 
