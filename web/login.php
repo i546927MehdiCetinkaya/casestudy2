@@ -5,42 +5,50 @@ session_start();
 $correct_user = 'admin';
 $correct_pass = 'admin123';
 
-// Functie om failed login naar EventBridge te sturen
-function send_failed_login_to_eventbridge($username, $source_ip) {
+// Functie om failed login naar API Gateway te sturen (GEEN AWS credentials nodig!)
+function send_failed_login_to_api_gateway($username, $source_ip) {
     $timestamp = gmdate('Y-m-d\TH:i:s\Z');
     $hostname = gethostname();
     
-    // Create EventBridge event JSON
+    // API Gateway configuratie
+    $api_endpoint = 'https://h8u5lhq15h.execute-api.eu-central-1.amazonaws.com/dev/events';
+    $api_key = 'Ur5VFlVJpR529I7dUbKYF4V4cGWeYmCw8S0tvyxs';
+    
+    // Create event payload (start with LOW severity, engine will escalate if needed)
     $event = [
-        [
-            'Source' => 'custom.security',
-            'DetailType' => 'Failed Login Attempt',
-            'Detail' => json_encode([
-                'eventType' => 'web_login_failed',
-                'sourceIP' => $source_ip,
-                'username' => $username,
-                'timestamp' => $timestamp,
-                'hostname' => $hostname,
-                'loginType' => 'web',
-                'url' => $_SERVER['REQUEST_URI'] ?? '/login.php',
-                'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
-                'description' => "Failed web login attempt from $source_ip for user $username"
-            ]),
-            'EventBusName' => 'default'
-        ]
+        'eventType' => 'web_login_failed',
+        'sourceIP' => $source_ip,
+        'username' => $username,
+        'timestamp' => $timestamp,
+        'hostname' => $hostname,
+        'loginType' => 'web',
+        'url' => $_SERVER['REQUEST_URI'] ?? '/login.php',
+        'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Unknown',
+        'description' => "Failed web login attempt from $source_ip for user $username",
+        'severity' => 'LOW'  // Engine will escalate to HIGH after 3+ attempts
     ];
     
-    $event_json = json_encode($event);
+    // Send via cURL (geen AWS credentials nodig!)
+    $ch = curl_init($api_endpoint);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($event));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'x-api-key: ' . $api_key
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 2); // 2 second timeout
     
-    // Escape voor shell
-    $event_escaped = escapeshellarg($event_json);
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
     
-    // Send via AWS CLI (asynchroon in background)
-    $cmd = "aws events put-events --entries $event_escaped --region eu-central-1 2>&1 &";
-    exec($cmd);
-    
-    // Log ook lokaal
-    error_log("SOAR: Failed web login - User: $username, IP: $source_ip");
+    // Log resultaat
+    if ($http_code === 200) {
+        error_log("SOAR: Failed web login sent to API Gateway - User: $username, IP: $source_ip");
+    } else {
+        error_log("SOAR: Failed to send to API Gateway (HTTP $http_code) - User: $username, IP: $source_ip");
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -65,8 +73,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: dashboard.php');
         exit();
     } else {
-        // Login FAILED - Send to EventBridge SOAR pipeline
-        send_failed_login_to_eventbridge($username, $source_ip);
+        // Login FAILED - Send to API Gateway SOAR pipeline (GEEN AWS credentials nodig!)
+        send_failed_login_to_api_gateway($username, $source_ip);
         
         http_response_code(401);
         echo '<!DOCTYPE html>
