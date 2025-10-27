@@ -34,6 +34,14 @@ jobs:
         with:
           terraform_wrapper: false
 
+      - name: Package Lambda Functions
+        run: |
+          cd lambda/ingress && zip -r ingress.zip ingress.py requirements.txt
+          cd ../parser && zip -r parser.zip parser.py requirements.txt
+          cd ../engine && zip -r engine.zip engine.py requirements.txt
+          cd ../notify && zip -r notify.zip notify.py requirements.txt
+          cd ../remediate && zip -r remediate.zip remediate.py requirements.txt
+
       - name: Terraform Init
         working-directory: ./terraform
         run: terraform init
