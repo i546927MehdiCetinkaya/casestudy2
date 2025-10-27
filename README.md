@@ -1,78 +1,153 @@
-# Case Study 2 - SOAR Security Platform
+# SOAR Security Platform - SSH Failed Login Monitoring# Case Study 2 - SOAR Security Platform
 
-[![Deploy to Dev](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml)
 
-## 🎯 Project Overview
 
-This project implements a **Security Orchestration, Automation, and Response (SOAR)** platform on AWS using an event-driven architecture. The system automatically detects, analyzes, and remediates security threats in real-time.
+Simple SOAR system that monitors SSH failed login attempts and sends email alerts.[![Deploy to Dev](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml)
 
-### Architecture Components
 
-- **VPC** with public/private subnets across 2 AZs
+
+## Architecture## 🎯 Project Overview
+
+
+
+```This project implements a **Security Orchestration, Automation, and Response (SOAR)** platform on AWS using an event-driven architecture. The system automatically detects, analyzes, and remediates security threats in real-time.
+
+Ubuntu Server → API Gateway → Lambda Pipeline → Email Notifications
+
+```### Architecture Components
+
+
+
+### Components- **VPC** with public/private subnets across 2 AZs
+
 - **Lambda Functions** (in VPC) for event processing:
-  - Parser Lambda - Parses CloudTrail events
-  - Engine Lambda - Analyzes threats and determines actions
-  - Notify Lambda - Sends security alerts via SNS
-  - Remediate Lambda - Executes automated remediation
-- **Amazon EKS** cluster for SOAR applications
-- **RDS PostgreSQL** for persistent storage
-- **DynamoDB** for event storage
-- **SQS Queues** for asynchronous processing
-- **SNS Topics** for notifications
-- **EventBridge** for event routing
+
+- **API Gateway**: Receives failed login events from Ubuntu server  - Parser Lambda - Parses CloudTrail events
+
+- **Lambda Functions**:  - Engine Lambda - Analyzes threats and determines actions
+
+  - **Ingress**: Validates and forwards events  - Notify Lambda - Sends security alerts via SNS
+
+  - **Parser**: Stores events in DynamoDB  - Remediate Lambda - Executes automated remediation
+
+  - **Engine**: Counts attempts, escalates severity- **Amazon EKS** cluster for SOAR applications
+
+  - **Notify**: Sends email alerts via SNS- **RDS PostgreSQL** for persistent storage
+
+- **DynamoDB**: Stores security events- **DynamoDB** for event storage
+
+- **SQS**: Queues between Lambda functions- **SQS Queues** for asynchronous processing
+
+- **SNS**: Email notifications- **SNS Topics** for notifications
+
+- **CloudWatch**: Monitoring and dashboards- **EventBridge** for event routing
+
 - **Application Load Balancer** for API access
-- **Monitoring Stack** (Prometheus + Grafana)
 
-## 📁 Project Structure
+## Deployment- **Monitoring Stack** (Prometheus + Grafana)
 
-```
-casestudy2/
-├── terraform/              # Infrastructure as Code
+
+
+### Prerequisites## 📁 Project Structure
+
+
+
+- AWS Account with SSO configured```
+
+- Terraform installedcasestudy2/
+
+- Valid AWS credentials├── terraform/              # Infrastructure as Code
+
 │   ├── main.tf            # Main Terraform configuration
-│   ├── vpc.tf             # VPC and networking
+
+### Deploy│   ├── vpc.tf             # VPC and networking
+
 │   ├── eks.tf             # EKS cluster
-│   ├── lambda.tf          # Lambda functions
-│   ├── rds.tf             # RDS database
-│   ├── services.tf        # DynamoDB, SQS, SNS, EventBridge
-│   ├── alb.tf             # Application Load Balancer
-│   ├── ecr.tf             # Container registry
+
+```bash│   ├── lambda.tf          # Lambda functions
+
+cd terraform│   ├── rds.tf             # RDS database
+
+terraform init│   ├── services.tf        # DynamoDB, SQS, SNS, EventBridge
+
+terraform apply│   ├── alb.tf             # Application Load Balancer
+
+```│   ├── ecr.tf             # Container registry
+
 │   ├── security_groups.tf # Security groups
-│   ├── variables.tf       # Input variables
+
+### Get API Endpoint│   ├── variables.tf       # Input variables
+
 │   └── outputs.tf         # Output values
-├── lambda/                # Lambda function code
-│   ├── parser/            # Event parser
-│   ├── engine/            # Threat analysis engine
-│   ├── notify/            # Notification service
+
+```bash├── lambda/                # Lambda function code
+
+terraform output api_gateway_endpoint│   ├── parser/            # Event parser
+
+terraform output api_key│   ├── engine/            # Threat analysis engine
+
+```│   ├── notify/            # Notification service
+
 │   └── remediate/         # Remediation service
-├── kubernetes/            # Kubernetes manifests
+
+## Monitoring├── kubernetes/            # Kubernetes manifests
+
 │   ├── namespace.yaml
-│   ├── soar-api-deployment.yaml
+
+### Email Alerts│   ├── soar-api-deployment.yaml
+
 │   ├── soar-processor-deployment.yaml
-│   ├── soar-remediation-deployment.yaml
+
+Notifications sent at: 3rd, 5th, 10th, 15th, 20th failed attempt within 2 minutes│   ├── soar-remediation-deployment.yaml
+
 │   ├── ingress.yaml
-│   ├── prometheus.yaml
+
+### CloudWatch Dashboard│   ├── prometheus.yaml
+
 │   └── grafana.yaml
-├── docker/                # Docker images
+
+Dashboard: `casestudy2-dev-soar-monitoring`├── docker/                # Docker images
+
 │   ├── soar-api/
-│   ├── soar-processor/
+
+## Project Structure│   ├── soar-processor/
+
 │   └── soar-remediation/
-├── ansible/               # Ansible playbooks
-│   ├── configure-eks.yml
-│   └── deploy-lambda.yml
-└── .github/workflows/     # CI/CD pipelines
-    ├── deploy-dev.yml
-    └── terraform-plan.yml
-```
 
-## 🚀 Deployment Instructions
+```├── ansible/               # Ansible playbooks
 
-### Prerequisites
+├── lambda/│   ├── configure-eks.yml
 
-1. **AWS Account** with appropriate permissions
+│   ├── ingress/       # API Gateway handler│   └── deploy-lambda.yml
+
+│   ├── parser/        # Event storage└── .github/workflows/     # CI/CD pipelines
+
+│   ├── engine/        # Threat analysis    ├── deploy-dev.yml
+
+│   ├── notify/        # Email notifications    └── terraform-plan.yml
+
+│   └── remediate/     # Event logging```
+
+└── terraform/         # Infrastructure code
+
+```## 🚀 Deployment Instructions
+
+
+
+## Ubuntu Setup### Prerequisites
+
+
+
+The Ubuntu server sends failed SSH login events to API Gateway. No credentials needed - just API key authentication.1. **AWS Account** with appropriate permissions
+
 2. **GitHub Repository** with OIDC configured
-3. **AWS CLI** installed and configured
+
+---3. **AWS CLI** installed and configured
+
 4. **Terraform** v1.6+ installed
-5. **kubectl** installed
+
+**Simple, functional SOAR monitoring system**5. **kubectl** installed
+
 6. **Docker** installed (for local testing)
 
 ### Step 1: Configure GitHub Secrets
