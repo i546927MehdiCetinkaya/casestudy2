@@ -18,36 +18,65 @@ secretsmanager = boto3.client('secretsmanager')
 REMEDIATION_QUEUE_URL = os.environ.get('REMEDIATION_QUEUE_URL')
 NOTIFY_QUEUE_URL = os.environ.get('NOTIFY_QUEUE_URL')
 DYNAMODB_TABLE = os.environ.get('DYNAMODB_TABLE')
+BLOCKED_IPS_TABLE = os.environ.get('BLOCKED_IPS_TABLE')
 RDS_SECRET_ARN = os.environ.get('RDS_SECRET_ARN')
 
 def count_recent_failed_logins(source_ip, event_type):
     """
-    Count failed login attempts from an IP in the last 10 minutes
+    Count failed login attempts from an IP in the last 2 minutes FOR SPECIFIC EVENT TYPE
+    SSH and web logins are tracked separately
     """
     try:
         table = dynamodb.Table(DYNAMODB_TABLE)
         current_time = int(datetime.utcnow().timestamp())
-        ten_minutes_ago = current_time - 600  # 10 minutes
+        two_minutes_ago = current_time - 120  # 2 minutes (120 seconds)
         
-        # Query DynamoDB for recent failed logins from this IP
+        # Query DynamoDB for recent failed logins from this IP for THIS SPECIFIC EVENT TYPE
         response = table.scan(
-            FilterExpression='source_ip = :ip AND event_name IN (:evt1, :evt2) AND #ts >= :time',
+            FilterExpression='source_ip = :ip AND event_name = :event_type AND #ts >= :time',
             ExpressionAttributeNames={'#ts': 'timestamp'},
             ExpressionAttributeValues={
                 ':ip': source_ip,
-                ':evt1': 'failed_login',
-                ':evt2': 'web_login_failed',
-                ':time': Decimal(str(ten_minutes_ago))
+                ':event_type': event_type,
+                ':time': Decimal(str(two_minutes_ago))
             }
         )
         
         count = response.get('Count', 0)
-        logger.info(f"Found {count} recent failed logins from {source_ip}")
+        logger.info(f"Found {count} recent {event_type} attempts from {source_ip}")
         return count
         
     except Exception as e:
         logger.error(f"Error counting failed logins: {str(e)}")
         return 0
+
+def block_ip_address(ip_address, reason, event_type, failed_attempts):
+    """
+    Add IP address to blocked IPs table in DynamoDB
+    TTL set to 24 hours (86400 seconds)
+    """
+    try:
+        blocked_ips_table = dynamodb.Table(BLOCKED_IPS_TABLE)
+        current_time = int(datetime.utcnow().timestamp())
+        expiration_time = current_time + 86400  # 24 hours from now
+        
+        item = {
+            'ip_address': ip_address,
+            'blocked_at': current_time,
+            'expiration_time': expiration_time,
+            'reason': reason,
+            'event_type': event_type,
+            'failed_attempts': failed_attempts,
+            'status': 'BLOCKED'
+        }
+        
+        blocked_ips_table.put_item(Item=item)
+        logger.info(f"✅ Blocked IP {ip_address} for {event_type} - {failed_attempts} attempts - Expires in 24h")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error blocking IP {ip_address}: {str(e)}")
+        return False
 
 def lambda_handler(event, context):
     """
@@ -72,20 +101,21 @@ def lambda_handler(event, context):
                 # Analyze event
                 analysis_result = analyze_event(message_body)
                 
-                # Update event in DynamoDB
+                # Update event in DynamoDB with new severity
                 table.update_item(
                     Key={
                         'event_id': event_id,
                         'timestamp': Decimal(str(message_body.get('timestamp')))
                     },
-                    UpdateExpression='SET #status = :status, analysis = :analysis, risk_score = :risk_score',
+                    UpdateExpression='SET #status = :status, analysis = :analysis, risk_score = :risk_score, severity = :severity',
                     ExpressionAttributeNames={
                         '#status': 'status'
                     },
                     ExpressionAttributeValues={
                         ':status': 'analyzed',
                         ':analysis': analysis_result['analysis'],
-                        ':risk_score': Decimal(str(analysis_result['risk_score']))
+                        ':risk_score': Decimal(str(analysis_result['risk_score'])),
+                        ':severity': analysis_result['final_severity']
                     }
                 )
                 
@@ -104,22 +134,34 @@ def lambda_handler(event, context):
                     )
                     logger.info(f"Sent event {event_id} to Remediation Queue")
                 
-                # Send notification for medium and high severity
-                if message_body.get('severity') in ['MEDIUM', 'HIGH']:
+                # Send notification ONLY at specific thresholds (3rd, 5th, 10th attempt)
+                final_severity = analysis_result['final_severity']
+                failed_attempts = analysis_result.get('failed_attempts', 0)
+                
+                # Notify only at key milestones to avoid spam
+                should_notify = (
+                    final_severity == 'HIGH' and 
+                    failed_attempts in [3, 5, 10, 15, 20]  # Only these specific counts
+                )
+                
+                if should_notify:
                     notification_payload = {
                         'event_id': event_id,
-                        'severity': message_body.get('severity'),
+                        'severity': final_severity,
                         'event_name': message_body.get('event_name'),
                         'source_ip': message_body.get('source_ip'),
                         'analysis': analysis_result['analysis'],
-                        'risk_score': analysis_result['risk_score']
+                        'risk_score': analysis_result['risk_score'],
+                        'failed_attempts': failed_attempts
                     }
                     
                     sqs.send_message(
                         QueueUrl=NOTIFY_QUEUE_URL,
                         MessageBody=json.dumps(notification_payload)
                     )
-                    logger.info(f"Sent event {event_id} to Notify Queue")
+                    logger.info(f"Sent event {event_id} to Notify Queue (HIGH severity, {failed_attempts} attempts)")
+                else:
+                    logger.info(f"Event {event_id} has {final_severity} severity ({failed_attempts} attempts) - no notification (not at threshold)")
                 
                 analyzed_events.append(event_id)
                 
@@ -170,15 +212,29 @@ def analyze_event(event_data):
         failed_attempts = count_recent_failed_logins(source_ip, event_name)
         logger.info(f"IP {source_ip} has {failed_attempts} recent failed login attempts")
         
-        # Escalate risk based on number of attempts
-        if failed_attempts >= 5:
-            risk_score += 50  # Critical brute force
+        # Block IP after 3 failed attempts
+        if failed_attempts == 3:
+            block_reason = f"Brute force attack detected - {failed_attempts} {event_name} attempts within 2 minutes"
+            if block_ip_address(source_ip, block_reason, event_name, failed_attempts):
+                logger.warning(f"🚫 IP {source_ip} has been BLOCKED after {failed_attempts} {event_name} attempts")
+        
+        # Escalate risk and severity based on EXACT number of attempts
+        # Only notify on 3rd, 5th, 10th attempt (not every attempt after threshold)
+        if failed_attempts >= 10:
+            risk_score += 70  # Critical brute force (10+)
+            severity = 'HIGH'
+        elif failed_attempts >= 5:
+            risk_score += 50  # Critical brute force (5-9)
             severity = 'HIGH'
         elif failed_attempts >= 3:
-            risk_score += 30  # Likely brute force
+            risk_score += 30  # Likely brute force (3-4 attempts)
             severity = 'HIGH'
-        elif failed_attempts >= 2:
-            risk_score += 15  # Suspicious activity
+        elif failed_attempts == 2:
+            risk_score += 10  # Suspicious activity (2 attempts)
+            severity = 'LOW'  # Only log, no notification yet
+        elif failed_attempts == 1:
+            risk_score = 5  # First attempt
+            severity = 'LOW'  # Only log, no notification
     
     # Check for suspicious patterns
     suspicious_ips = ['0.0.0.0', '127.0.0.1']  # Add known malicious IPs
@@ -209,8 +265,10 @@ def analyze_event(event_data):
     
     return {
         'risk_score': risk_score,
+        'final_severity': severity,  # Return updated severity
+        'failed_attempts': failed_attempts if event_name in ['failed_login', 'web_login_failed'] else 0,
         'requires_remediation': requires_remediation,
         'recommended_actions': recommended_actions,
-        'analysis': f"Event analyzed with risk score {risk_score}. "
+        'analysis': f"Event analyzed with risk score {risk_score} (severity: {severity}). "
                    f"Remediation {'required' if requires_remediation else 'not required'}."
     }

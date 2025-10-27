@@ -105,3 +105,10 @@ variable "client_vpn_cidr" {
   type        = string
   default     = "172.16.0.0/22"  # VPN client IP range
 }
+
+# Alert Email Configuration
+variable "alert_email" {
+  description = "Email address for receiving alerts and notifications"
+  type        = string
+  default     = "mehdicetinkaya6132@gmail.com"
+}
