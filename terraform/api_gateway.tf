@@ -115,7 +115,6 @@ resource "aws_lambda_function" "ingress" {
   environment {
     variables = {
       PARSER_QUEUE_URL   = aws_sqs_queue.parser_queue.url
-      BLOCKED_IPS_TABLE  = aws_dynamodb_table.blocked_ips.name
       LOG_LEVEL          = "INFO"
     }
   }
@@ -173,14 +172,6 @@ resource "aws_iam_role_policy" "lambda_ingress_policy" {
           "sqs:SendMessage"
         ]
         Resource = aws_sqs_queue.parser_queue.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:Query"
-        ]
-        Resource = aws_dynamodb_table.blocked_ips.arn
       },
       {
         Effect = "Allow"

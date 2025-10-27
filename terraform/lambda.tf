@@ -67,10 +67,7 @@ resource "aws_iam_role_policy" "lambda_custom" {
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
-        Resource = [
-          aws_dynamodb_table.events.arn,
-          aws_dynamodb_table.blocked_ips.arn
-        ]
+        Resource = aws_dynamodb_table.events.arn
       }
     ]
   })
@@ -155,7 +152,6 @@ resource "aws_lambda_function" "engine" {
       REMEDIATION_QUEUE_URL  = aws_sqs_queue.remediation_queue.url
       NOTIFY_QUEUE_URL       = aws_sqs_queue.notify_queue.url
       DYNAMODB_TABLE         = aws_dynamodb_table.events.name
-      BLOCKED_IPS_TABLE      = aws_dynamodb_table.blocked_ips.name
       LOG_LEVEL              = "INFO"
     }
   }

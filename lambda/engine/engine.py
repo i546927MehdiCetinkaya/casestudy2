@@ -12,14 +12,11 @@ logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 # AWS clients
 sqs = boto3.client('sqs')
 dynamodb = boto3.resource('dynamodb')
-secretsmanager = boto3.client('secretsmanager')
 
 # Environment variables
 REMEDIATION_QUEUE_URL = os.environ.get('REMEDIATION_QUEUE_URL')
 NOTIFY_QUEUE_URL = os.environ.get('NOTIFY_QUEUE_URL')
 DYNAMODB_TABLE = os.environ.get('DYNAMODB_TABLE')
-BLOCKED_IPS_TABLE = os.environ.get('BLOCKED_IPS_TABLE')
-RDS_SECRET_ARN = os.environ.get('RDS_SECRET_ARN')
 
 def count_recent_failed_logins(source_ip, event_type):
     """
@@ -49,34 +46,6 @@ def count_recent_failed_logins(source_ip, event_type):
     except Exception as e:
         logger.error(f"Error counting failed logins: {str(e)}")
         return 0
-
-def block_ip_address(ip_address, reason, event_type, failed_attempts):
-    """
-    Add IP address to blocked IPs table in DynamoDB
-    TTL set to 24 hours (86400 seconds)
-    """
-    try:
-        blocked_ips_table = dynamodb.Table(BLOCKED_IPS_TABLE)
-        current_time = int(datetime.utcnow().timestamp())
-        expiration_time = current_time + 86400  # 24 hours from now
-        
-        item = {
-            'ip_address': ip_address,
-            'blocked_at': current_time,
-            'expiration_time': expiration_time,
-            'reason': reason,
-            'event_type': event_type,
-            'failed_attempts': failed_attempts,
-            'status': 'BLOCKED'
-        }
-        
-        blocked_ips_table.put_item(Item=item)
-        logger.info(f"✅ Blocked IP {ip_address} for {event_type} - {failed_attempts} attempts - Expires in 24h")
-        return True
-        
-    except Exception as e:
-        logger.error(f"❌ Error blocking IP {ip_address}: {str(e)}")
-        return False
 
 def lambda_handler(event, context):
     """
@@ -211,12 +180,6 @@ def analyze_event(event_data):
     if event_name in ['failed_login', 'web_login_failed'] and source_ip != 'Unknown':
         failed_attempts = count_recent_failed_logins(source_ip, event_name)
         logger.info(f"IP {source_ip} has {failed_attempts} recent failed login attempts")
-        
-        # Block IP after 3 failed attempts
-        if failed_attempts == 3:
-            block_reason = f"Brute force attack detected - {failed_attempts} {event_name} attempts within 2 minutes"
-            if block_ip_address(source_ip, block_reason, event_name, failed_attempts):
-                logger.warning(f"🚫 IP {source_ip} has been BLOCKED after {failed_attempts} {event_name} attempts")
         
         # Escalate risk and severity based on EXACT number of attempts
         # Only notify on 3rd, 5th, 10th attempt (not every attempt after threshold)

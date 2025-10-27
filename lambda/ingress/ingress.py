@@ -10,33 +10,9 @@ logger.setLevel(os.environ.get('LOG_LEVEL', 'INFO'))
 
 # AWS clients
 sqs = boto3.client('sqs')
-dynamodb = boto3.resource('dynamodb')
 
 # Environment variables
 PARSER_QUEUE_URL = os.environ.get('PARSER_QUEUE_URL')
-BLOCKED_IPS_TABLE = os.environ.get('BLOCKED_IPS_TABLE')
-
-def is_ip_blocked(ip_address):
-    """
-    Check if IP address is in the blocked IPs table
-    """
-    try:
-        blocked_ips_table = dynamodb.Table(BLOCKED_IPS_TABLE)
-        response = blocked_ips_table.get_item(
-            Key={'ip_address': ip_address}
-        )
-        
-        if 'Item' in response:
-            item = response['Item']
-            logger.warning(f"🚫 IP {ip_address} is BLOCKED - Reason: {item.get('reason', 'Unknown')}")
-            return True, item
-        
-        return False, None
-        
-    except Exception as e:
-        logger.error(f"Error checking blocked IP: {str(e)}")
-        # If check fails, allow the request (fail open)
-        return False, None
 
 def lambda_handler(event, context):
     """
@@ -57,25 +33,6 @@ def lambda_handler(event, context):
             body = event
         
         logger.info(f"Parsed body: {json.dumps(body)}")
-        
-        # Extract source IP
-        source_ip = body.get('sourceIP', 'Unknown')
-        
-        # Check if IP is blocked
-        is_blocked, block_info = is_ip_blocked(source_ip)
-        if is_blocked:
-            logger.warning(f"⛔ Blocked IP {source_ip} attempted login - Rejecting request")
-            return {
-                'statusCode': 403,
-                'headers': {
-                    'Content-Type': 'application/json'
-                },
-                'body': json.dumps({
-                    'error': 'Access denied - IP address is blocked',
-                    'reason': block_info.get('reason', 'Multiple failed login attempts'),
-                    'blocked_until': block_info.get('expiration_time', 'Unknown')
-                })
-            }
         
         # Validate required fields
         required_fields = ['eventType', 'sourceIP', 'username', 'timestamp']

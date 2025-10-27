@@ -1,8 +1,0 @@
-[
-  {
-    "Source": "custom.security",
-    "DetailType": "Failed Login Attempt",
-    "Detail": "{\"eventType\":\"failed_login\",\"sourceIP\":\"192.168.223.186\",\"username\":\"testuser\",\"timestamp\":\"2025-10-22T11:30:00Z\",\"hostname\":\"ubuntu-server-2404\",\"description\":\"Test failed SSH login attempt from 192.168.223.186 for user testuser\"}",
-    "EventBusName": "default"
-  }
-]
