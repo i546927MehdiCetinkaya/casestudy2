@@ -9,22 +9,28 @@ def lambda_handler(event, context):
     try:
         body = json.loads(event['body']) if 'body' in event else event
         
-        required = ['eventType', 'sourceIP', 'username', 'timestamp']
-        for field in required:
-            if field not in body:
-                return {'statusCode': 400, 'body': json.dumps({'error': f'Missing: {field}'})}
+        # Support both snake_case and camelCase
+        event_type = body.get('event_type') or body.get('eventType')
+        source_ip = body.get('source_ip') or body.get('sourceIP')
+        username = body.get('username')
+        timestamp = body.get('timestamp')
+        
+        if not all([event_type, source_ip, username, timestamp]):
+            return {'statusCode': 400, 'body': json.dumps({'error': 'Missing required fields'})}
         
         message = {
             'Source': 'custom.security',
             'DetailType': 'Failed Login Attempt',
             'detail': {
-                'eventType': body['eventType'],
-                'sourceIP': body['sourceIP'],
-                'username': body['username'],
-                'timestamp': body['timestamp'],
+                'eventType': event_type,
+                'sourceIP': source_ip,
+                'username': username,
+                'timestamp': timestamp,
                 'hostname': body.get('hostname', 'unknown'),
-                'description': body.get('description', f"Failed login from {body['sourceIP']}"),
-                'severity': 'HIGH'
+                'service': body.get('service', 'ssh'),
+                'port': body.get('port', 22),
+                'description': body.get('description', f"Failed login from {source_ip}"),
+                'severity': body.get('severity', 'HIGH')
             }
         }
         
