@@ -27,6 +27,16 @@ jobs:
           role-to-assume: arn:aws:iam::920120424621:role/githubrepo
           aws-region: eu-central-1
       
+      - name: Package Lambda Functions
+        working-directory: ./lambda
+        run: |
+          for dir in ingress parser engine notify remediate; do
+            cd $dir
+            zip -r ${dir}.zip . -x "*.pyc" -x "__pycache__/*" -x "*.dist-info/*"
+            mv ${dir}.zip ../${dir}/
+            cd ..
+          done
+      
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.0
