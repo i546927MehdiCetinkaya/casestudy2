@@ -1,4 +1,4 @@
-# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform - SSH Failed Login Monitoring# Case Study 2 - SOAR Security Platform
+# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform - SSH Failed Login Monitoring# Case Study 2 - SOAR Security Platform
 
 
 
@@ -6,7 +6,7 @@ Een geautomatiseerd beveiligingssysteem dat verdachte inlogpogingen detecteert e
 
 
 
-## 📋 Wat is dit project?AWS serverless SOAR system that monitors SSH failed login attempts and sends automated email alerts.
+## 📋 Wat is dit project?Een geautomatiseerd beveiligingssysteem dat verdachte inlogpogingen detecteert en direct waarschuwt via email.
 
 
 
@@ -14,7 +14,7 @@ Dit is een **SOAR** (Security Orchestration, Automation, and Response) platform 
 
 
 
-## 🎯 Het probleem## ArchitectureAWS-based Security Orchestration, Automation, and Response (SOAR) system that detects SSH failed login attempts and sends automated email alerts.
+## 🎯 Het probleem## 📋 Wat is dit project?AWS serverless SOAR system that monitors SSH failed login attempts and sends automated email alerts.
 
 
 
@@ -22,85 +22,189 @@ Servers worden dagelijks aangevallen door hackers die proberen in te breken met 
 
 
 
-## ✅ De oplossing```mermaid
+## ✅ De oplossingDit is een **SOAR** (Security Orchestration, Automation, and Response) platform - een intelligent beveiligingssysteem dat automatisch cyberaanvallen detecteert en daarop reageert. Het monitort een Ubuntu server en stuurt direct waarschuwingen wanneer iemand verdacht gedrag vertoont.
 
 
 
-Dit systeem werkt als een digitale beveiligingsagent die 24/7 de servers in de gaten houdt. Het leest continu de beveiligingslogboeken van de Ubuntu server en analyseert elk mislukte inlogpoging. Zodra verdachte patronen worden gedetecteerd, worden security teams automatisch gealarmeerd via email - zonder menselijke tussenkomst nodig.flowchart TB
+Dit systeem werkt als een digitale beveiligingsagent die 24/7 de servers in de gaten houdt. Het leest continu de beveiligingslogboeken van de Ubuntu server en analyseert elke mislukte inlogpoging. Zodra verdachte patronen worden gedetecteerd, worden security teams automatisch gealarmeerd via email.
 
 
 
-## 🔄 Hoe werkt het?    subgraph OnPrem["On-Premises Network<br/>192.168.154.0/24"]## ArchitectureSimple SOAR system that monitors SSH failed login attempts and sends email alerts.[![Deploy to Dev](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml)
+## 🔄 Hoe werkt het?## 🎯 Het probleem## ArchitectureAWS-based Security Orchestration, Automation, and Response (SOAR) system that detects SSH failed login attempts and sends automated email alerts.
 
 
 
-Het systeem volgt een simpel maar effectief proces:        Ubuntu["Ubuntu Server<br/>192.168.154.13"]
+1. **Continue Monitoring**: Een script op de Ubuntu server leest het beveiligingslogboek (`/var/log/auth.log`) en detecteert mislukte SSH-inlogpogingen.
 
 
 
-1. **Continue Monitoring**: Een script op de Ubuntu server leest non-stop het beveiligingslogboek (`/var/log/auth.log`). Elke seconde wordt gecheckt of er nieuwe inlogpogingen zijn.    end
+2. **Directe Detectie**: Bij een verkeerd wachtwoord wordt dit direct geregistreerd met informatie zoals: gebruikersnaam, IP-adres, en tijdstip.Servers worden dagelijks aangevallen door hackers die proberen in te breken met **brute force aanvallen**. Dit zijn geautomatiseerde pogingen waarbij duizenden wachtwoorden worden geprobeerd totdat de juiste wordt gevonden. Handmatig monitoren hiervan is onmogelijk - een systeem kan in enkele minuten duizenden inlogpogingen ontvangen. Late detectie kan leiden tot een succesvol datalek met ernstige gevolgen.
 
 
 
-2. **Directe Detectie**: Zodra iemand een verkeerd wachtwoord invoert bij een SSH-inlog, wordt dit direct geregistreerd. Het systeem verzamelt informatie zoals: wie probeerde in te loggen, vanaf welk IP-adres, en hoe laat.    
+3. **Slimme Analyse**: Events worden naar de cloud gestuurd waar een intelligent systeem patronen analyseert. Het telt hoeveel pogingen er zijn binnen 2 minuten van hetzelfde IP-adres.
 
 
 
-3. **Slimme Analyse**: Alle events worden naar de cloud gestuurd waar een intelligent systeem patronen analyseert. Het telt hoeveel pogingen er zijn binnen een tijdsbestek van 2 minuten, en van welk IP-adres ze komen.    subgraph VPN["VPN Connection"]```
+4. **Geautomatiseerde Actie**: Bij verdachte activiteit wordt automatisch een email-waarschuwing verstuurd naar het security team met alle relevante details.## ✅ De oplossing```mermaid
 
 
 
-4. **Geautomatiseerde Actie**: Bij verdachte activiteit (bijvoorbeeld 5 pogingen binnen 2 minuten) wordt automatisch een gedetailleerde email-waarschuwing verstuurd naar het security team met alle relevante informatie.        Tunnel1["Tunnel 1<br/>3.124.83.221"]
+## 📊 Waarschuwingsniveaus
 
 
 
-## 📊 Waarschuwingsniveaus        Tunnel2["Tunnel 2<br/>63.177.155.118"]Ubuntu Server → API Gateway → Ingress Lambda → SQS → Parser Lambda → DynamoDB
+Het systeem werkt met oplopende alarmniveaus:Dit systeem werkt als een digitale beveiligingsagent die 24/7 de servers in de gaten houdt. Het leest continu de beveiligingslogboeken van de Ubuntu server en analyseert elk mislukte inlogpoging. Zodra verdachte patronen worden gedetecteerd, worden security teams automatisch gealarmeerd via email - zonder menselijke tussenkomst nodig.flowchart TB
 
 
 
-Het systeem werkt met oplopende alarmniveaus afhankelijk van de ernst:    end
+- **3 pogingen**: Eerste waarschuwing
+
+- **5 pogingen**: Verhoogd alarm - verdacht gedrag
+
+- **10 pogingen**: Mogelijk brute force aanval## 🔄 Hoe werkt het?    subgraph OnPrem["On-Premises Network<br/>192.168.154.0/24"]## ArchitectureSimple SOAR system that monitors SSH failed login attempts and sends email alerts.[![Deploy to Dev](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml)
+
+- **15+ pogingen**: Bevestigde aanval - kritiek
 
 
-
-- **3 pogingen**: Eerste waarschuwing - mogelijk gewoon een vergeten wachtwoord                                                       ↓## Architecture## 🎯 Project Overview
-
-- **5 pogingen**: Verhoogd alarm - verdacht gedrag gedetecteerd
-
-- **10 pogingen**: Mogelijk actieve brute force aanval - directe aandacht vereist    subgraph AWS["AWS Cloud<br/>eu-central-1"]
-
-- **15+ pogingen**: Bevestigde aanval - kritieke situatie
-
-        subgraph VPC["VPC<br/>10.0.0.0/16"]                                               Engine Lambda → Notify Lambda → SNS Email
-
-Elke waarschuwing bevat volledige details: gebruikersnaam, IP-adres, tijdstip, hostname, en het totaal aantal pogingen.
-
-            subgraph PublicSubnets["Public Subnets"]
 
 ## 🏗️ Architectuur
 
-                NAT1["NAT Gateway<br/>10.0.1.0/24"]```
+Het systeem volgt een simpel maar effectief proces:        Ubuntu["Ubuntu Server<br/>192.168.154.13"]
 
-Het systeem draait volledig in de **AWS cloud** met een moderne **serverless architectuur**. Dit betekent:
+Het systeem draait volledig in de **AWS cloud** met een **serverless architectuur**:
 
-                NAT2["NAT Gateway<br/>10.0.2.0/24"]
 
-- **Geen servers te beheren**: Alles draait automatisch in de cloud
 
-- **Automatisch schalen**: Bij meer aanvallen schaalt het systeem automatisch op            end
+- **Geen servers te beheren**: Alles draait automatisch
+
+- **Automatisch schalen**: Schaalt op bij meer verkeer1. **Continue Monitoring**: Een script op de Ubuntu server leest non-stop het beveiligingslogboek (`/var/log/auth.log`). Elke seconde wordt gecheckt of er nieuwe inlogpogingen zijn.    end
+
+- **Altijd beschikbaar**: 99.99% uptime
+
+- **Kostenefficient**: Betaal alleen voor gebruik
+
+
+
+### Event Processing Pipeline2. **Directe Detectie**: Zodra iemand een verkeerd wachtwoord invoert bij een SSH-inlog, wordt dit direct geregistreerd. Het systeem verzamelt informatie zoals: wie probeerde in te loggen, vanaf welk IP-adres, en hoe laat.    
+
+
+
+Wanneer een event binnenkomt, doorloopt het deze stappen:
+
+
+
+1. **Ingress**: Valideert de data3. **Slimme Analyse**: Alle events worden naar de cloud gestuurd waar een intelligent systeem patronen analyseert. Het telt hoeveel pogingen er zijn binnen een tijdsbestek van 2 minuten, en van welk IP-adres ze komen.    subgraph VPN["VPN Connection"]```
+
+2. **Parser**: Slaat het event op in de database
+
+3. **Engine**: Analyseert patronen en detecteert bedreigingen
+
+4. **Notify**: Verstuurt email alerts bij verdachte activiteit
+
+4. **Geautomatiseerde Actie**: Bij verdachte activiteit (bijvoorbeeld 5 pogingen binnen 2 minuten) wordt automatisch een gedetailleerde email-waarschuwing verstuurd naar het security team met alle relevante informatie.        Tunnel1["Tunnel 1<br/>3.124.83.221"]
+
+Elke stap is losjes gekoppeld via message queues voor maximale betrouwbaarheid.
+
+
+
+## 🛠️ Technologie
+
+## 📊 Waarschuwingsniveaus        Tunnel2["Tunnel 2<br/>63.177.155.118"]Ubuntu Server → API Gateway → Ingress Lambda → SQS → Parser Lambda → DynamoDB
+
+- **AWS Lambda**: Serverless functies voor event processing
+
+- **Amazon DynamoDB**: NoSQL database voor event opslag
+
+- **Amazon SQS**: Message queues voor betrouwbare communicatie
+
+- **Amazon SNS**: Email notificatiesHet systeem werkt met oplopende alarmniveaus afhankelijk van de ernst:    end
+
+- **Amazon API Gateway**: Beveiligde REST API
+
+- **AWS VPN**: Site-to-Site VPN verbinding
+
+- **Terraform**: Infrastructure as Code
+
+- **GitHub Actions**: Geautomatiseerde deployment- **3 pogingen**: Eerste waarschuwing - mogelijk gewoon een vergeten wachtwoord                                                       ↓## Architecture## 🎯 Project Overview
+
+
+
+## 📧 Email Notificaties- **5 pogingen**: Verhoogd alarm - verdacht gedrag gedetecteerd
+
+
+
+Elke waarschuwing bevat:- **10 pogingen**: Mogelijk actieve brute force aanval - directe aandacht vereist    subgraph AWS["AWS Cloud<br/>eu-central-1"]
+
+
+
+```- **15+ pogingen**: Bevestigde aanval - kritieke situatie
+
+SECURITY ALERT - Multiple Failed Login Attempts
+
+        subgraph VPC["VPC<br/>10.0.0.0/16"]                                               Engine Lambda → Notify Lambda → SNS Email
+
+Severity: HIGH
+
+Username: adminElke waarschuwing bevat volledige details: gebruikersnaam, IP-adres, tijdstip, hostname, en het totaal aantal pogingen.
+
+Source IP: 203.0.113.45
+
+Total Attempts: 10            subgraph PublicSubnets["Public Subnets"]
+
+Time Window: 2 minutes
+
+## 🏗️ Architectuur
+
+Action Required: Investigate source IP and consider blocking.
+
+```                NAT1["NAT Gateway<br/>10.0.1.0/24"]```
+
+
+
+## 🚀 DeploymentHet systeem draait volledig in de **AWS cloud** met een moderne **serverless architectuur**. Dit betekent:
+
+
+
+Volledig geautomatiseerd via **GitHub Actions**:                NAT2["NAT Gateway<br/>10.0.2.0/24"]
+
+
+
+1. Terraform valideert infrastructure code- **Geen servers te beheren**: Alles draait automatisch in de cloud
+
+2. Lambda functies worden ingepakt
+
+3. Deployment naar AWS- **Automatisch schalen**: Bij meer aanvallen schaalt het systeem automatisch op            end
+
+4. Automatische tests
 
 - **Altijd beschikbaar**: 99.99% uptime gegarandeerd
 
+Van code tot productie in minder dan 5 minuten.
+
 - **Kostenefficient**: Je betaalt alleen voor wat je gebruikt            
 
+## 🎓 Academic Context
 
+
+
+Ontwikkeld voor **Case Study 2** van het derde semester aan **Fontys Hogeschool**. Het demonstreert praktische toepassing van moderne cloud-native architecturen, security automation, en DevOps principes.
 
 ### Netwerk Setup            subgraph PrivateSubnets["Private Subnets"]## Components```This project implements a **Security Orchestration, Automation, and Response (SOAR)** platform on AWS using an event-driven architecture. The system automatically detects, analyzes, and remediates security threats in real-time.
 
+---
 
 
-Het systeem verbindt het on-premises netwerk (192.168.154.0/24) met AWS via een beveiligde **VPN-tunnel**. De Ubuntu server (192.168.154.13) stuurt events via deze tunnel naar de cloud. In AWS draaien alle componenten in een **VPC** (Virtual Private Cloud) met strikte security groups - alles is volledig afgeschermd van het publieke internet.                Lambda["Lambda Functions<br/>10.0.101.0/24, 10.0.102.0/24"]
 
+**Project**: Case Study 2 - SOAR Security Platform  
 
+**Universiteit**: Fontys Hogeschool  Het systeem verbindt het on-premises netwerk (192.168.154.0/24) met AWS via een beveiligde **VPN-tunnel**. De Ubuntu server (192.168.154.13) stuurt events via deze tunnel naar de cloud. In AWS draaien alle componenten in een **VPC** (Virtual Private Cloud) met strikte security groups - alles is volledig afgeschermd van het publieke internet.                Lambda["Lambda Functions<br/>10.0.101.0/24, 10.0.102.0/24"]
+
+**Semester**: 3  
+
+**Student**: Mehdi Cetinkaya  
+
+**Jaar**: 2025
 
 ### Event Processing            end
 
