@@ -1,142 +1,281 @@
-# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform - SSH Failed Login Monitoring# Case Study 2 - SOAR Security Platform
+# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform - SSH Failed Login Monitoring# Case Study 2 - SOAR Security Platform
 
 
 
-AWS serverless SOAR system that monitors SSH failed login attempts and sends automated email alerts.
+Een geautomatiseerd beveiligingssysteem dat verdachte inlogpogingen detecteert en direct waarschuwt via email.
 
 
 
-## ArchitectureAWS-based Security Orchestration, Automation, and Response (SOAR) system that detects SSH failed login attempts and sends automated email alerts.
+## 📋 Wat is dit project?AWS serverless SOAR system that monitors SSH failed login attempts and sends automated email alerts.
 
 
 
-```mermaid
+Dit is een **SOAR** (Security Orchestration, Automation, and Response) platform - een intelligent beveiligingssysteem dat automatisch cyberaanvallen detecteert en daarop reageert. Het monitort een Ubuntu server en stuurt direct waarschuwingen wanneer iemand verdacht gedrag vertoont.
 
-flowchart TB
 
-    subgraph OnPrem["On-Premises Network<br/>192.168.154.0/24"]## ArchitectureSimple SOAR system that monitors SSH failed login attempts and sends email alerts.[![Deploy to Dev](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml)
 
-        Ubuntu["Ubuntu Server<br/>192.168.154.13"]
+## 🎯 Het probleem## ArchitectureAWS-based Security Orchestration, Automation, and Response (SOAR) system that detects SSH failed login attempts and sends automated email alerts.
 
-    end
 
-    
 
-    subgraph VPN["VPN Connection"]```
+Servers worden dagelijks aangevallen door hackers die proberen in te breken met **brute force aanvallen**. Dit zijn geautomatiseerde pogingen waarbij duizenden wachtwoorden worden geprobeerd totdat de juiste wordt gevonden. Handmatig monitoren hiervan is onmogelijk - een systeem kan in enkele minuten duizenden inlogpogingen ontvangen. Late detectie kan leiden tot een succesvol datalek met ernstige gevolgen.
 
-        Tunnel1["Tunnel 1<br/>3.124.83.221"]
 
-        Tunnel2["Tunnel 2<br/>63.177.155.118"]Ubuntu Server → API Gateway → Ingress Lambda → SQS → Parser Lambda → DynamoDB
 
-    end
+## ✅ De oplossing```mermaid
 
-                                                       ↓## Architecture## 🎯 Project Overview
 
-    subgraph AWS["AWS Cloud<br/>eu-central-1"]
+
+Dit systeem werkt als een digitale beveiligingsagent die 24/7 de servers in de gaten houdt. Het leest continu de beveiligingslogboeken van de Ubuntu server en analyseert elk mislukte inlogpoging. Zodra verdachte patronen worden gedetecteerd, worden security teams automatisch gealarmeerd via email - zonder menselijke tussenkomst nodig.flowchart TB
+
+
+
+## 🔄 Hoe werkt het?    subgraph OnPrem["On-Premises Network<br/>192.168.154.0/24"]## ArchitectureSimple SOAR system that monitors SSH failed login attempts and sends email alerts.[![Deploy to Dev](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml)
+
+
+
+Het systeem volgt een simpel maar effectief proces:        Ubuntu["Ubuntu Server<br/>192.168.154.13"]
+
+
+
+1. **Continue Monitoring**: Een script op de Ubuntu server leest non-stop het beveiligingslogboek (`/var/log/auth.log`). Elke seconde wordt gecheckt of er nieuwe inlogpogingen zijn.    end
+
+
+
+2. **Directe Detectie**: Zodra iemand een verkeerd wachtwoord invoert bij een SSH-inlog, wordt dit direct geregistreerd. Het systeem verzamelt informatie zoals: wie probeerde in te loggen, vanaf welk IP-adres, en hoe laat.    
+
+
+
+3. **Slimme Analyse**: Alle events worden naar de cloud gestuurd waar een intelligent systeem patronen analyseert. Het telt hoeveel pogingen er zijn binnen een tijdsbestek van 2 minuten, en van welk IP-adres ze komen.    subgraph VPN["VPN Connection"]```
+
+
+
+4. **Geautomatiseerde Actie**: Bij verdachte activiteit (bijvoorbeeld 5 pogingen binnen 2 minuten) wordt automatisch een gedetailleerde email-waarschuwing verstuurd naar het security team met alle relevante informatie.        Tunnel1["Tunnel 1<br/>3.124.83.221"]
+
+
+
+## 📊 Waarschuwingsniveaus        Tunnel2["Tunnel 2<br/>63.177.155.118"]Ubuntu Server → API Gateway → Ingress Lambda → SQS → Parser Lambda → DynamoDB
+
+
+
+Het systeem werkt met oplopende alarmniveaus afhankelijk van de ernst:    end
+
+
+
+- **3 pogingen**: Eerste waarschuwing - mogelijk gewoon een vergeten wachtwoord                                                       ↓## Architecture## 🎯 Project Overview
+
+- **5 pogingen**: Verhoogd alarm - verdacht gedrag gedetecteerd
+
+- **10 pogingen**: Mogelijk actieve brute force aanval - directe aandacht vereist    subgraph AWS["AWS Cloud<br/>eu-central-1"]
+
+- **15+ pogingen**: Bevestigde aanval - kritieke situatie
 
         subgraph VPC["VPC<br/>10.0.0.0/16"]                                               Engine Lambda → Notify Lambda → SNS Email
 
+Elke waarschuwing bevat volledige details: gebruikersnaam, IP-adres, tijdstip, hostname, en het totaal aantal pogingen.
+
             subgraph PublicSubnets["Public Subnets"]
+
+## 🏗️ Architectuur
 
                 NAT1["NAT Gateway<br/>10.0.1.0/24"]```
 
+Het systeem draait volledig in de **AWS cloud** met een moderne **serverless architectuur**. Dit betekent:
+
                 NAT2["NAT Gateway<br/>10.0.2.0/24"]
 
-            end
+- **Geen servers te beheren**: Alles draait automatisch in de cloud
 
-            
+- **Automatisch schalen**: Bij meer aanvallen schaalt het systeem automatisch op            end
 
-            subgraph PrivateSubnets["Private Subnets"]## Components```This project implements a **Security Orchestration, Automation, and Response (SOAR)** platform on AWS using an event-driven architecture. The system automatically detects, analyzes, and remediates security threats in real-time.
+- **Altijd beschikbaar**: 99.99% uptime gegarandeerd
 
-                Lambda["Lambda Functions<br/>10.0.101.0/24, 10.0.102.0/24"]
+- **Kostenefficient**: Je betaalt alleen voor wat je gebruikt            
 
-            end
 
-        end
 
-        ### Lambda FunctionsUbuntu Server → API Gateway → Lambda Pipeline → Email Notifications
+### Netwerk Setup            subgraph PrivateSubnets["Private Subnets"]## Components```This project implements a **Security Orchestration, Automation, and Response (SOAR)** platform on AWS using an event-driven architecture. The system automatically detects, analyzes, and remediates security threats in real-time.
 
-        API["API Gateway<br/>REST API"]
+
+
+Het systeem verbindt het on-premises netwerk (192.168.154.0/24) met AWS via een beveiligde **VPN-tunnel**. De Ubuntu server (192.168.154.13) stuurt events via deze tunnel naar de cloud. In AWS draaien alle componenten in een **VPC** (Virtual Private Cloud) met strikte security groups - alles is volledig afgeschermd van het publieke internet.                Lambda["Lambda Functions<br/>10.0.101.0/24, 10.0.102.0/24"]
+
+
+
+### Event Processing            end
+
+
+
+Wanneer een event binnenkomt, doorloopt het een **pipeline** van gespecialiseerde functies:        end
+
+
+
+1. **Ingress**: Controleert of de data geldig is        ### Lambda FunctionsUbuntu Server → API Gateway → Lambda Pipeline → Email Notifications
+
+2. **Parser**: Slaat het event op in de database
+
+3. **Engine**: Analyseert de data en detecteert bedreigingen        API["API Gateway<br/>REST API"]
+
+4. **Notify**: Verstuurt email alerts bij verdachte activiteit
 
         - **Ingress**: Receives events from API Gateway, validates, forwards to parser queue
 
+Elke stap is losjes gekoppeld via **message queues**, wat betekent dat als één component tijdelijk uitvalt, de rest gewoon doorwerkt.
+
         subgraph Processing["Event Processing"]
+
+## 🛠️ Technologie
 
             Ingress["Ingress Lambda"]- **Parser**: Stores events in DynamoDB, forwards to engine queue```### Architecture Components
 
+Het platform maakt gebruik van moderne cloud-native technologieën:
+
             Parser["Parser Lambda"]
 
-            Engine["Engine Lambda"]- **Engine**: Analyzes failed login patterns, escalates severity, triggers notifications
+- **AWS Lambda**: Serverless functies voor event processing
 
-            Notify["Notify Lambda"]
+- **Amazon DynamoDB**: NoSQL database voor snelle event opslag            Engine["Engine Lambda"]- **Engine**: Analyzes failed login patterns, escalates severity, triggers notifications
 
-        end- **Notify**: Sends email alerts via SNS at thresholds (3rd, 5th, 10th, 15th, 20th attempts)
+- **Amazon SQS**: Message queues voor betrouwbare communicatie
 
-        
+- **Amazon SNS**: Email notificatie systeem            Notify["Notify Lambda"]
 
-        subgraph Storage["Storage & Queues"]- **Remediate**: Logs remediation events to DynamoDB
+- **Amazon API Gateway**: Beveiligde REST API voor events
 
-            DDB["DynamoDB<br/>Events Table"]
+- **AWS VPN**: Site-to-Site VPN voor secure verbinding        end- **Notify**: Sends email alerts via SNS at thresholds (3rd, 5th, 10th, 15th, 20th attempts)
 
-            SQS1["Parser Queue"]### Components- **VPC** with public/private subnets across 2 AZs
+- **Terraform**: Infrastructure as Code voor reproduceerbare deployments
+
+- **GitHub Actions**: Geautomatiseerde CI/CD pipeline        
+
+
+
+## 📧 Email Notificaties        subgraph Storage["Storage & Queues"]- **Remediate**: Logs remediation events to DynamoDB
+
+
+
+Elke waarschuwing bevat gestructureerde informatie:            DDB["DynamoDB<br/>Events Table"]
+
+
+
+```            SQS1["Parser Queue"]### Components- **VPC** with public/private subnets across 2 AZs
+
+SECURITY ALERT - Multiple Failed Login Attempts
 
             SQS2["Engine Queue"]
 
-            SQS3["Notify Queue"]### AWS Services
+Severity: HIGH
 
-        end
+Username: admin            SQS3["Notify Queue"]### AWS Services
 
-        - **API Gateway**: REST API endpoint with API key authentication- **Lambda Functions** (in VPC) for event processing:
+Source IP: 203.0.113.45
+
+Hostname: ubuntu-server        end
+
+Total Attempts: 10
+
+Time Window: 2 minutes        - **API Gateway**: REST API endpoint with API key authentication- **Lambda Functions** (in VPC) for event processing:
+
+Detection Time: 2025-10-28 14:32:15 UTC
 
         SNS["SNS Topic<br/>Email Alerts"]
 
-    end- **DynamoDB**: Event storage (event_id, timestamp, user, IP, hostname, service)
+Action Required: Investigate source IP and consider blocking.
 
-    
+```    end- **DynamoDB**: Event storage (event_id, timestamp, user, IP, hostname, service)
 
-    Ubuntu -->|Failed Login Events| VPN- **SQS**: Asynchronous queuing (parser-queue, engine-queue, notify-queue, remediation-queue)- **API Gateway**: Receives failed login events from Ubuntu server  - Parser Lambda - Parses CloudTrail events
 
-    VPN --> API
 
-    API -->|Validate| Ingress- **SNS**: Email notification system
+## 🚀 Deployment    
+
+
+
+Het systeem wordt volledig automatisch gedeployed via **GitHub Actions**. Bij elke code wijziging op de main branch:    Ubuntu -->|Failed Login Events| VPN- **SQS**: Asynchronous queuing (parser-queue, engine-queue, notify-queue, remediation-queue)- **API Gateway**: Receives failed login events from Ubuntu server  - Parser Lambda - Parses CloudTrail events
+
+
+
+1. Terraform valideert de infrastructure code    VPN --> API
+
+2. Lambda functies worden ingepakt in ZIP files
+
+3. Alles wordt gedeployed naar AWS    API -->|Validate| Ingress- **SNS**: Email notification system
+
+4. Smoke tests controleren of alles werkt
 
     Ingress --> SQS1
 
+Dit gebeurt volledig zonder menselijke tussenkomst - van code tot productie in minder dan 5 minuten.
+
     SQS1 --> Parser- **CloudWatch**: Monitoring, logs, alarms, dashboard- **Lambda Functions**:  - Engine Lambda - Analyzes threats and determines actions
+
+## 📁 Project Structuur
 
     Parser --> DDB
 
-    Parser --> SQS2- **VPC**: Private networking for Lambda functions
+```
 
-    SQS2 --> Engine
+casestudy2/    Parser --> SQS2- **VPC**: Private networking for Lambda functions
 
-    Engine -->|Brute Force<br/>Detection| SQS3- **VPN**: Site-to-site connection to on-premises network  - **Ingress**: Validates and forwards events  - Notify Lambda - Sends security alerts via SNS
+├── lambda/                  # Serverless functies
 
-    SQS3 --> Notify
+│   ├── ingress/            # API event handler    SQS2 --> Engine
 
-    Notify --> SNS
+│   ├── parser/             # Event parsing & storage
 
-    SNS -->|Email| User["mehdicetinkaya6132<br/>@gmail.com"]
+│   ├── engine/             # Threat detection logic    Engine -->|Brute Force<br/>Detection| SQS3- **VPN**: Site-to-site connection to on-premises network  - **Ingress**: Validates and forwards events  - Notify Lambda - Sends security alerts via SNS
 
-    ## Deployment  - **Parser**: Stores events in DynamoDB  - Remediate Lambda - Executes automated remediation
+│   ├── notify/             # Email notificaties
 
-    Lambda -.->|Private| NAT1
+│   └── remediate/          # Event logging    SQS3 --> Notify
 
-    Lambda -.->|Private| NAT2
+├── terraform/               # Infrastructure code
 
-    
+│   ├── vpc.tf              # Netwerk configuratie    Notify --> SNS
 
-    style Ubuntu fill:#2d5016,stroke:#4a7c1f,color:#fff### Prerequisites  - **Engine**: Counts attempts, escalates severity- **Amazon EKS** cluster for SOAR applications
+│   ├── lambda.tf           # Lambda functies
 
-    style API fill:#1a4d6d,stroke:#2d7ba6,color:#fff
+│   ├── api_gateway.tf      # REST API    SNS -->|Email| User["mehdicetinkaya6132<br/>@gmail.com"]
 
-    style DDB fill:#1a4d6d,stroke:#2d7ba6,color:#fff- AWS Account with SSO configured
+│   └── services.tf         # DynamoDB, SQS, SNS
 
-    style SNS fill:#c04000,stroke:#e65100,color:#fff
+├── scripts/                 # Helper scripts    ## Deployment  - **Parser**: Stores events in DynamoDB  - Remediate Lambda - Executes automated remediation
 
-    style Ingress fill:#5a2d82,stroke:#7c3daa,color:#fff- Terraform installed  - **Notify**: Sends email alerts via SNS- **RDS PostgreSQL** for persistent storage
+│   ├── ubuntu-monitor.sh   # Ubuntu monitoring script
 
-    style Parser fill:#5a2d82,stroke:#7c3daa,color:#fff
+│   └── package-lambdas.ps1 # Lambda packaging    Lambda -.->|Private| NAT1
+
+└── .github/workflows/       # CI/CD pipelines
+
+    ├── deploy.yml          # Automatische deployment    Lambda -.->|Private| NAT2
+
+    └── terraform-plan.yml  # Infrastructure validatie
+
+```    
+
+
+
+## 🎓 Academic Context    style Ubuntu fill:#2d5016,stroke:#4a7c1f,color:#fff### Prerequisites  - **Engine**: Counts attempts, escalates severity- **Amazon EKS** cluster for SOAR applications
+
+
+
+Dit project is ontwikkeld voor **Case Study 2** van het derde semester aan **Fontys Hogeschool**. Het demonstreert praktische toepassing van moderne cloud-native architecturen, security automation, en DevOps principes. Het combineert theorie uit de lessen met hands-on implementatie van een real-world beveiligingssysteem.    style API fill:#1a4d6d,stroke:#2d7ba6,color:#fff
+
+
+
+---    style DDB fill:#1a4d6d,stroke:#2d7ba6,color:#fff- AWS Account with SSO configured
+
+
+
+**Project**: Case Study 2 - SOAR Security Platform      style SNS fill:#c04000,stroke:#e65100,color:#fff
+
+**Universiteit**: Fontys Hogeschool  
+
+**Semester**: 3      style Ingress fill:#5a2d82,stroke:#7c3daa,color:#fff- Terraform installed  - **Notify**: Sends email alerts via SNS- **RDS PostgreSQL** for persistent storage
+
+**Student**: Mehdi Cetinkaya  
+
+**Jaar**: 2025    style Parser fill:#5a2d82,stroke:#7c3daa,color:#fff
+
 
     style Engine fill:#5a2d82,stroke:#7c3daa,color:#fff- AWS CLI configured
 
