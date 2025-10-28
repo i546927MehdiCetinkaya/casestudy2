@@ -33,7 +33,6 @@ jobs:
           for dir in ingress parser engine notify remediate; do
             cd $dir
             zip -r ${dir}.zip . -x "*.pyc" -x "__pycache__/*" -x "*.dist-info/*"
-            mv ${dir}.zip ../${dir}/
             cd ..
           done
       
