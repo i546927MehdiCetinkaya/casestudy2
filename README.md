@@ -1,120 +1,238 @@
-# SOAR Security Platform# SOAR Security Platform - SSH Failed Login Monitoring# Case Study 2 - SOAR Security Platform
+# SOAR Security Platform# SOAR Security Platform# SOAR Security Platform - SSH Failed Login Monitoring# Case Study 2 - SOAR Security Platform
 
 
 
-AWS-based Security Orchestration, Automation, and Response (SOAR) system that detects SSH failed login attempts and sends automated email alerts.
+AWS serverless SOAR system that monitors SSH failed login attempts and sends automated email alerts.
 
 
 
-## ArchitectureSimple SOAR system that monitors SSH failed login attempts and sends email alerts.[![Deploy to Dev](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml)
+## ArchitectureAWS-based Security Orchestration, Automation, and Response (SOAR) system that detects SSH failed login attempts and sends automated email alerts.
 
 
+
+```mermaid
+
+flowchart TB
+
+    subgraph OnPrem["On-Premises Network<br/>192.168.154.0/24"]## ArchitectureSimple SOAR system that monitors SSH failed login attempts and sends email alerts.[![Deploy to Dev](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/i546927MehdiCetinkaya/casestudy2/actions/workflows/deploy-dev.yml)
+
+        Ubuntu["Ubuntu Server<br/>192.168.154.13"]
+
+    end
+
+    
+
+    subgraph VPN["VPN Connection"]```
+
+        Tunnel1["Tunnel 1<br/>3.124.83.221"]
+
+        Tunnel2["Tunnel 2<br/>63.177.155.118"]Ubuntu Server → API Gateway → Ingress Lambda → SQS → Parser Lambda → DynamoDB
+
+    end
+
+                                                       ↓## Architecture## 🎯 Project Overview
+
+    subgraph AWS["AWS Cloud<br/>eu-central-1"]
+
+        subgraph VPC["VPC<br/>10.0.0.0/16"]                                               Engine Lambda → Notify Lambda → SNS Email
+
+            subgraph PublicSubnets["Public Subnets"]
+
+                NAT1["NAT Gateway<br/>10.0.1.0/24"]```
+
+                NAT2["NAT Gateway<br/>10.0.2.0/24"]
+
+            end
+
+            
+
+            subgraph PrivateSubnets["Private Subnets"]## Components```This project implements a **Security Orchestration, Automation, and Response (SOAR)** platform on AWS using an event-driven architecture. The system automatically detects, analyzes, and remediates security threats in real-time.
+
+                Lambda["Lambda Functions<br/>10.0.101.0/24, 10.0.102.0/24"]
+
+            end
+
+        end
+
+        ### Lambda FunctionsUbuntu Server → API Gateway → Lambda Pipeline → Email Notifications
+
+        API["API Gateway<br/>REST API"]
+
+        - **Ingress**: Receives events from API Gateway, validates, forwards to parser queue
+
+        subgraph Processing["Event Processing"]
+
+            Ingress["Ingress Lambda"]- **Parser**: Stores events in DynamoDB, forwards to engine queue```### Architecture Components
+
+            Parser["Parser Lambda"]
+
+            Engine["Engine Lambda"]- **Engine**: Analyzes failed login patterns, escalates severity, triggers notifications
+
+            Notify["Notify Lambda"]
+
+        end- **Notify**: Sends email alerts via SNS at thresholds (3rd, 5th, 10th, 15th, 20th attempts)
+
+        
+
+        subgraph Storage["Storage & Queues"]- **Remediate**: Logs remediation events to DynamoDB
+
+            DDB["DynamoDB<br/>Events Table"]
+
+            SQS1["Parser Queue"]### Components- **VPC** with public/private subnets across 2 AZs
+
+            SQS2["Engine Queue"]
+
+            SQS3["Notify Queue"]### AWS Services
+
+        end
+
+        - **API Gateway**: REST API endpoint with API key authentication- **Lambda Functions** (in VPC) for event processing:
+
+        SNS["SNS Topic<br/>Email Alerts"]
+
+    end- **DynamoDB**: Event storage (event_id, timestamp, user, IP, hostname, service)
+
+    
+
+    Ubuntu -->|Failed Login Events| VPN- **SQS**: Asynchronous queuing (parser-queue, engine-queue, notify-queue, remediation-queue)- **API Gateway**: Receives failed login events from Ubuntu server  - Parser Lambda - Parses CloudTrail events
+
+    VPN --> API
+
+    API -->|Validate| Ingress- **SNS**: Email notification system
+
+    Ingress --> SQS1
+
+    SQS1 --> Parser- **CloudWatch**: Monitoring, logs, alarms, dashboard- **Lambda Functions**:  - Engine Lambda - Analyzes threats and determines actions
+
+    Parser --> DDB
+
+    Parser --> SQS2- **VPC**: Private networking for Lambda functions
+
+    SQS2 --> Engine
+
+    Engine -->|Brute Force<br/>Detection| SQS3- **VPN**: Site-to-site connection to on-premises network  - **Ingress**: Validates and forwards events  - Notify Lambda - Sends security alerts via SNS
+
+    SQS3 --> Notify
+
+    Notify --> SNS
+
+    SNS -->|Email| User["mehdicetinkaya6132<br/>@gmail.com"]
+
+    ## Deployment  - **Parser**: Stores events in DynamoDB  - Remediate Lambda - Executes automated remediation
+
+    Lambda -.->|Private| NAT1
+
+    Lambda -.->|Private| NAT2
+
+    
+
+    style Ubuntu fill:#2d5016,stroke:#4a7c1f,color:#fff### Prerequisites  - **Engine**: Counts attempts, escalates severity- **Amazon EKS** cluster for SOAR applications
+
+    style API fill:#1a4d6d,stroke:#2d7ba6,color:#fff
+
+    style DDB fill:#1a4d6d,stroke:#2d7ba6,color:#fff- AWS Account with SSO configured
+
+    style SNS fill:#c04000,stroke:#e65100,color:#fff
+
+    style Ingress fill:#5a2d82,stroke:#7c3daa,color:#fff- Terraform installed  - **Notify**: Sends email alerts via SNS- **RDS PostgreSQL** for persistent storage
+
+    style Parser fill:#5a2d82,stroke:#7c3daa,color:#fff
+
+    style Engine fill:#5a2d82,stroke:#7c3daa,color:#fff- AWS CLI configured
+
+    style Notify fill:#5a2d82,stroke:#7c3daa,color:#fff
+
+    style VPN fill:#666,stroke:#999,color:#fff- **DynamoDB**: Stores security events- **DynamoDB** for event storage
 
 ```
-
-Ubuntu Server → API Gateway → Ingress Lambda → SQS → Parser Lambda → DynamoDB
-
-                                                   ↓## Architecture## 🎯 Project Overview
-
-                                               Engine Lambda → Notify Lambda → SNS Email
-
-```
-
-
-
-## Components```This project implements a **Security Orchestration, Automation, and Response (SOAR)** platform on AWS using an event-driven architecture. The system automatically detects, analyzes, and remediates security threats in real-time.
-
-
-
-### Lambda FunctionsUbuntu Server → API Gateway → Lambda Pipeline → Email Notifications
-
-- **Ingress**: Receives events from API Gateway, validates, forwards to parser queue
-
-- **Parser**: Stores events in DynamoDB, forwards to engine queue```### Architecture Components
-
-- **Engine**: Analyzes failed login patterns, escalates severity, triggers notifications
-
-- **Notify**: Sends email alerts via SNS at thresholds (3rd, 5th, 10th, 15th, 20th attempts)
-
-- **Remediate**: Logs remediation events to DynamoDB
-
-### Components- **VPC** with public/private subnets across 2 AZs
-
-### AWS Services
-
-- **API Gateway**: REST API endpoint with API key authentication- **Lambda Functions** (in VPC) for event processing:
-
-- **DynamoDB**: Event storage (event_id, timestamp, user, IP, hostname, service)
-
-- **SQS**: Asynchronous queuing (parser-queue, engine-queue, notify-queue, remediation-queue)- **API Gateway**: Receives failed login events from Ubuntu server  - Parser Lambda - Parses CloudTrail events
-
-- **SNS**: Email notification system
-
-- **CloudWatch**: Monitoring, logs, alarms, dashboard- **Lambda Functions**:  - Engine Lambda - Analyzes threats and determines actions
-
-- **VPC**: Private networking for Lambda functions
-
-- **VPN**: Site-to-site connection to on-premises network  - **Ingress**: Validates and forwards events  - Notify Lambda - Sends security alerts via SNS
-
-
-
-## Deployment  - **Parser**: Stores events in DynamoDB  - Remediate Lambda - Executes automated remediation
-
-
-
-### Prerequisites  - **Engine**: Counts attempts, escalates severity- **Amazon EKS** cluster for SOAR applications
-
-- AWS Account with SSO configured
-
-- Terraform installed  - **Notify**: Sends email alerts via SNS- **RDS PostgreSQL** for persistent storage
-
-- AWS CLI configured
-
-- **DynamoDB**: Stores security events- **DynamoDB** for event storage
 
 ### Deploy Infrastructure
 
+## Components
+
 ```bash- **SQS**: Queues between Lambda functions- **SQS Queues** for asynchronous processing
 
-cd terraform
+- **Ubuntu Server**: Monitors `/var/log/auth.log` for failed SSH attempts
 
-terraform init- **SNS**: Email notifications- **SNS Topics** for notifications
+- **API Gateway**: REST endpoint with API key authenticationcd terraform
 
-terraform plan
+- **Lambda Functions**: Ingress → Parser → Engine → Notify (serverless processing)
+
+- **DynamoDB**: Event storageterraform init- **SNS**: Email notifications- **SNS Topics** for notifications
+
+- **SQS**: Asynchronous message queues
+
+- **SNS**: Email notifications (alerts at 3rd, 5th, 10th, 15th, 20th failed attempt)terraform plan
+
+- **VPN**: Site-to-site connection (192.168.154.0/24 ↔ AWS VPC)
 
 terraform apply- **CloudWatch**: Monitoring and dashboards- **EventBridge** for event routing
 
+## Quick Start
+
 ```
 
-- **Application Load Balancer** for API access
+### 1. Deploy Infrastructure
 
-### Get API Credentials
+```bash- **Application Load Balancer** for API access
 
-```bash## Deployment- **Monitoring Stack** (Prometheus + Grafana)
+cd terraform && terraform init && terraform apply
 
-terraform output api_gateway_endpoint
+```### Get API Credentials
+
+
+
+### 2. Setup Ubuntu Monitor```bash## Deployment- **Monitoring Stack** (Prometheus + Grafana)
+
+```bash
+
+# Get API keyterraform output api_gateway_endpoint
+
+aws apigateway get-api-key --api-key 5fk1r9nc43 --include-value
 
 aws apigateway get-api-key --api-key <KEY_ID> --include-value --query 'value' --output text
 
+# Copy script to Ubuntu
+
+scp scripts/ubuntu-monitor.sh user@192.168.154.13:~/```
+
+
+
+# Edit with your API key, then run### Prerequisites## 📁 Project Structure
+
+sudo ./ubuntu-monitor.sh
+
+```## Ubuntu Server Setup
+
+
+
+### 3. Test
+
+```bash
+
+ssh wronguser@localhost  # Enter wrong password 5 times### 1. Copy monitor script to Ubuntu
+
 ```
-
-### Prerequisites## 📁 Project Structure
-
-## Ubuntu Server Setup
-
-
-
-### 1. Copy monitor script to Ubuntu
 
 ```bash- AWS Account with SSO configured```
 
+## Email Alerts
+
 # Transfer scripts/ubuntu-monitor.sh to your Ubuntu server
 
-scp scripts/ubuntu-monitor.sh user@ubuntu-server:~/- Terraform installedcasestudy2/
+1. Check email for SNS confirmation
+
+2. Click confirmation linkscp scripts/ubuntu-monitor.sh user@ubuntu-server:~/- Terraform installedcasestudy2/
+
+3. Receive alerts on brute force detection
 
 ```
 
+---
+
 - Valid AWS credentials├── terraform/              # Infrastructure as Code
+
+**Case Study 2** | Fontys University | Semester 3 | Mehdi Cetinkaya
 
 ### 2. Edit script with your API key
 
