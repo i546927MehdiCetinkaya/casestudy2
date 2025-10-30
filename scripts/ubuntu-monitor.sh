@@ -9,7 +9,16 @@ HOSTNAME=$(hostname)
 echo "Starting SSH Failed Login Monitor..."
 echo "Monitoring: $LOG_FILE"
 echo "API Endpoint: $API_ENDPOINT"
+echo "API Key: ${API_KEY:0:10}..." # Show first 10 chars only
 echo ""
+
+# Check if API_KEY is still placeholder
+if [ "$API_KEY" = "REPLACE_WITH_YOUR_API_KEY" ]; then
+    echo "ERROR: API_KEY not configured!"
+    echo "Please edit this script and replace API_KEY with your actual key"
+    echo "Run: aws apigateway get-api-key --api-key 5fk1r9nc43 --include-value --query 'value' --output text"
+    exit 1
+fi
 
 # Monitor auth.log for failed SSH logins
 tail -Fn0 "$LOG_FILE" | while read line; do
@@ -46,15 +55,22 @@ EOF
         echo "  Time: $ISO_TIMESTAMP"
         
         # Send to API Gateway
-        RESPONSE=$(curl -s -X POST "$API_ENDPOINT" \
+        RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" -X POST "$API_ENDPOINT" \
             -H "x-api-key: $API_KEY" \
             -H "Content-Type: application/json" \
             -d "$JSON_PAYLOAD")
         
-        if [ $? -eq 0 ]; then
-            echo "  Sent to SOAR system: $RESPONSE"
+        HTTP_CODE=$(echo "$RESPONSE" | grep "HTTP_CODE:" | cut -d: -f2)
+        BODY=$(echo "$RESPONSE" | sed '/HTTP_CODE:/d')
+        
+        if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
+            echo "  ✓ Sent to SOAR system (HTTP $HTTP_CODE)"
+            echo "  Response: $BODY"
         else
-            echo "  Failed to send to SOAR system"
+            echo "  ✗ Failed to send (HTTP $HTTP_CODE)"
+            echo "  Response: $BODY"
+            echo "  Check: API_KEY=$API_KEY"
+            echo "  Endpoint: $API_ENDPOINT"
         fi
         echo ""
     fi
