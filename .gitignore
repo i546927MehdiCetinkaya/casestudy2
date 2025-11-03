@@ -3,6 +3,8 @@
 *.tfstate
 *.tfstate.backup
 *.tfvars
+*.tfplan
+tfplan
 .terraform.lock.hcl
 
 # Lambda packages
