@@ -23,13 +23,20 @@ Dit systeem:
 ## Hoe werkt het?
 
 ```
-Ubuntu Server → VPN → API Gateway → Lambda Pipeline → Email Alert
+Ubuntu Server → HTTPS → API Gateway → Lambda (VPC) → Email Alert
 ```
 
 1. **Ingress**: Valideert inkomende events
 2. **Parser**: Slaat events op in DynamoDB
 3. **Engine**: Detecteert brute force patronen
 4. **Notify**: Verstuurt email via SNS
+
+**Netwerk Architectuur:**
+- Ubuntu server stuurt events via **HTTPS** naar publieke API Gateway endpoint
+- Lambda functies draaien in **private VPC subnets** voor maximale security
+- **VPC Endpoints** zorgen voor directe AWS service communicatie (DynamoDB, SQS, SNS)
+- **Geen NAT Gateway** nodig - alles via VPC endpoints (lagere kosten)
+- **Geen VPN** nodig - API Gateway is publiek bereikbaar via HTTPS
 
 ## Waarschuwingen
 
@@ -43,12 +50,12 @@ Ubuntu Server → VPN → API Gateway → Lambda Pipeline → Email Alert
 ## Technologie
 
 **AWS Serverless:**
-- Lambda (event processing)
+- Lambda (event processing in VPC)
 - DynamoDB (event storage)
 - SQS (message queues)
 - SNS (email notificaties)
 - API Gateway (REST API)
-- VPN (site-to-site verbinding)
+- VPC Endpoints (secure AWS service access)
 
 **Infrastructure:**
 - Terraform (IaC)

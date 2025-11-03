@@ -6,24 +6,23 @@ flowchart TB
         Ubuntu["🖥️ Ubuntu Server<br/>192.168.154.13<br/><br/>Monitors /var/log/auth.log"]
     end
     
-    subgraph VPN["🔒 VPN Connection"]
-        Tunnel1["Tunnel 1: 3.124.83.221"]
-        Tunnel2["Tunnel 2: 63.177.155.118"]
-    end
+    Internet["🌐 Internet<br/>(HTTPS)"]
     
     subgraph AWS["☁️ AWS Cloud - eu-central-1"]
+        API["API Gateway<br/>REST API + API Key<br/>(Public Endpoint)"]
+        
         subgraph VPC["VPC: 10.0.0.0/16"]
-            subgraph Public["Public Subnets"]
-                NAT1["NAT Gateway<br/>10.0.1.0/24"]
-                NAT2["NAT Gateway<br/>10.0.2.0/24"]
+            subgraph Private["Private Subnets<br/>10.0.100.0/24, 10.0.101.0/24<br/>(No Internet Access)"]
+                Lambda["Lambda Functions<br/>(4 functions)"]
             end
             
-            subgraph Private["Private Subnets<br/>10.0.101.0/24, 10.0.102.0/24"]
-                Lambda["Lambda Functions"]
+            subgraph Endpoints["VPC Endpoints"]
+                VPCE_DDB["DynamoDB<br/>Endpoint"]
+                VPCE_SQS["SQS<br/>Endpoint"]
+                VPCE_SNS["SNS<br/>Endpoint"]
+                VPCE_Logs["CloudWatch<br/>Logs Endpoint"]
             end
         end
-        
-        API["API Gateway<br/>REST API + API Key"]
         
         subgraph Pipeline["Event Processing Pipeline"]
             Ingress["1️⃣ Ingress Lambda<br/>Validates events"]
@@ -44,21 +43,23 @@ flowchart TB
     
     User["👤 Security Team<br/>mehdicetinkaya6132@gmail.com"]
     
-    Ubuntu -->|"Failed SSH login events"| VPN
-    VPN --> API
+    Ubuntu -->|"HTTPS POST"| Internet
+    Internet --> API
     API --> Ingress
     Ingress --> Q1
     Q1 --> Parser
-    Parser --> DDB
+    Parser -.->|"via VPC Endpoint"| VPCE_DDB
+    VPCE_DDB -.-> DDB
     Parser --> Q2
     Q2 --> Engine
     Engine -->|"Brute force detected"| Q3
     Q3 --> Notify
-    Notify --> SNS
+    Notify -.->|"via VPC Endpoint"| VPCE_SNS
+    VPCE_SNS -.-> SNS
     SNS -->|"Email notification"| User
     
-    Lambda -.->|"Internet access"| NAT1
-    Lambda -.->|"Internet access"| NAT2
+    Lambda -.->|"Private network"| VPCE_SQS
+    Lambda -.->|"Logging"| VPCE_Logs
     
     style Ubuntu fill:#2d5016,stroke:#4a7c1f,color:#fff
     style API fill:#1a4d6d,stroke:#2d7ba6,color:#fff
@@ -68,17 +69,27 @@ flowchart TB
     style Parser fill:#5a2d82,stroke:#7c3daa,color:#fff
     style Engine fill:#5a2d82,stroke:#7c3daa,color:#fff
     style Notify fill:#5a2d82,stroke:#7c3daa,color:#fff
-    style VPN fill:#666,stroke:#999,color:#fff
+    style Internet fill:#666,stroke:#999,color:#fff
     style User fill:#0d4d4d,stroke:#1a7a7a,color:#fff
+    style Private fill:#1a1a2e,stroke:#444,color:#fff
+    style Endpoints fill:#0f3460,stroke:#16213e,color:#fff
 ```
 
 ## Legenda
 
 ### Netwerk
 - **On-Premises**: Ubuntu server (192.168.154.13) in lokaal netwerk
-- **VPN**: Site-to-Site VPN verbinding naar AWS
-- **Public Subnets**: NAT Gateways voor uitgaand internet verkeer
+- **Internet**: Ubuntu stuurt events via HTTPS naar publieke API Gateway endpoint
+- **API Gateway**: Publiek bereikbaar REST API endpoint met API key authenticatie
 - **Private Subnets**: Lambda functies zonder directe internet toegang
+- **VPC Endpoints**: Secure private connecties naar AWS services (geen internet nodig)
+
+### Security Voordelen
+1. **Geen VPN vereist** - API Gateway is publiek bereikbaar via HTTPS
+2. **Geen NAT Gateway** - Lambda functies gebruiken VPC endpoints voor AWS services
+3. **Cost-effective** - Lagere kosten zonder NAT Gateway ($0.045/uur = $32/maand bespaard)
+4. **Secure** - Al het verkeer blijft binnen AWS backbone netwerk
+5. **Isolated Lambda** - Functies draaien in private subnets zonder internet access
 
 ### Event Flow
 1. Ubuntu detecteert mislukte SSH login → stuurt naar API Gateway
