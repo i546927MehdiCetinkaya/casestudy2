@@ -138,24 +138,6 @@ resource "aws_cloudwatch_metric_alarm" "notify_errors" {
   }
 }
 
-# Remediate Lambda Alarms
-resource "aws_cloudwatch_metric_alarm" "remediate_errors" {
-  alarm_name          = "${var.project_name}-${var.environment}-remediate-errors"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 1
-  metric_name         = "Errors"
-  namespace           = "AWS/Lambda"
-  period              = 300
-  statistic           = "Sum"
-  threshold           = 3
-  alarm_description   = "Remediate Lambda error count exceeded threshold"
-  alarm_actions       = [aws_sns_topic.lambda_alarms.arn]
-
-  dimensions = {
-    FunctionName = aws_lambda_function.remediate.function_name
-  }
-}
-
 # DynamoDB Alarms
 resource "aws_cloudwatch_metric_alarm" "dynamodb_read_throttles" {
   alarm_name          = "${var.project_name}-${var.environment}-dynamodb-read-throttles"

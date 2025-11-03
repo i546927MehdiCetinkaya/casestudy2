@@ -95,35 +95,6 @@ resource "aws_api_gateway_usage_plan_key" "ubuntu_monitor" {
   usage_plan_id = aws_api_gateway_usage_plan.ubuntu_monitor.id
 }
 
-# Lambda Function (Ingress - in VPC)
-resource "aws_lambda_function" "ingress" {
-  filename         = "${path.module}/../lambda/ingress/ingress.zip"
-  function_name    = "${var.project_name}-${var.environment}-ingress"
-  role            = aws_iam_role.lambda_ingress_role.arn
-  handler         = "ingress.lambda_handler"
-  source_code_hash = filebase64sha256("${path.module}/../lambda/ingress/ingress.zip")
-  runtime         = "python3.11"
-  timeout         = 30
-  memory_size     = 256
-
-  # Lambda in VPC (same as other functions)
-  vpc_config {
-    subnet_ids         = aws_subnet.private[*].id
-    security_group_ids = [aws_security_group.lambda.id]
-  }
-
-  environment {
-    variables = {
-      PARSER_QUEUE_URL   = aws_sqs_queue.parser_queue.url
-      LOG_LEVEL          = "INFO"
-    }
-  }
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-ingress"
-  }
-}
-
 # Lambda Permission for API Gateway
 resource "aws_lambda_permission" "api_gateway_invoke" {
   statement_id  = "AllowAPIGatewayInvoke"
@@ -131,71 +102,6 @@ resource "aws_lambda_permission" "api_gateway_invoke" {
   function_name = aws_lambda_function.ingress.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.soar_ingress.execution_arn}/*/*/*"
-}
-
-# IAM Role for Ingress Lambda
-resource "aws_iam_role" "lambda_ingress_role" {
-  name = "${var.project_name}-${var.environment}-lambda-ingress-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "lambda.amazonaws.com"
-      }
-    }]
-  })
-}
-
-# IAM Policy for Ingress Lambda
-resource "aws_iam_role_policy" "lambda_ingress_policy" {
-  name = "${var.project_name}-${var.environment}-lambda-ingress-policy"
-  role = aws_iam_role.lambda_ingress_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = "arn:aws:logs:*:*:*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "sqs:SendMessage"
-        ]
-        Resource = aws_sqs_queue.parser_queue.arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "ec2:CreateNetworkInterface",
-          "ec2:DescribeNetworkInterfaces",
-          "ec2:DeleteNetworkInterface",
-          "ec2:AssignPrivateIpAddresses",
-          "ec2:UnassignPrivateIpAddresses"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-# CloudWatch Log Group
-resource "aws_cloudwatch_log_group" "ingress" {
-  name              = "/aws/lambda/${aws_lambda_function.ingress.function_name}"
-  retention_in_days = 7
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-ingress-logs"
-  }
 }
 
 # Output the API endpoint and key

@@ -108,19 +108,6 @@ resource "aws_sqs_queue" "notify_queue" {
   }
 }
 
-resource "aws_sqs_queue" "remediation_queue" {
-  name                       = "${var.project_name}-${var.environment}-remediation-queue"
-  delay_seconds              = 0
-  max_message_size           = 262144
-  message_retention_seconds  = 1209600
-  receive_wait_time_seconds  = 0
-  visibility_timeout_seconds = 600
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-remediation-queue"
-  }
-}
-
 # SNS Topics
 resource "aws_sns_topic" "security_alerts" {
   name = "${var.project_name}-${var.environment}-security-alerts"

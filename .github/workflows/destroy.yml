@@ -30,7 +30,7 @@ jobs:
       - name: Package Lambda Functions
         working-directory: ./lambda
         run: |
-          for dir in ingress parser engine notify remediate; do
+          for dir in ingress parser engine notify; do
             cd $dir
             zip -r ${dir}.zip . -x "*.pyc" -x "__pycache__/*" -x "*.dist-info/*"
             cd ..

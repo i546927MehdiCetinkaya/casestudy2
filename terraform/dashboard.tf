@@ -157,8 +157,7 @@ resource "aws_cloudwatch_dashboard" "soar_monitoring" {
             ["AWS/Lambda", "Duration", "FunctionName", "${var.project_name}-${var.environment}-ingress", { label = "Ingress", color = "#FF6B6B" }],
             ["AWS/Lambda", "Duration", "FunctionName", "${var.project_name}-${var.environment}-parser", { label = "Parser", color = "#4ECDC4" }],
             ["AWS/Lambda", "Duration", "FunctionName", "${var.project_name}-${var.environment}-engine", { label = "Engine (Threat Detection)", color = "#45B7D1" }],
-            ["AWS/Lambda", "Duration", "FunctionName", "${var.project_name}-${var.environment}-notify", { label = "Notify", color = "#FFA07A" }],
-            ["AWS/Lambda", "Duration", "FunctionName", "${var.project_name}-${var.environment}-remediate", { label = "Remediate", color = "#98D8C8" }]
+            ["AWS/Lambda", "Duration", "FunctionName", "${var.project_name}-${var.environment}-notify", { label = "Notify", color = "#FFA07A" }]
           ]
           view    = "timeSeries"
           region  = var.aws_region

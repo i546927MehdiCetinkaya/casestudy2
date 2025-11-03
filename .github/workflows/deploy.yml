@@ -40,7 +40,6 @@ jobs:
           cd ../parser && zip -r parser.zip parser.py requirements.txt
           cd ../engine && zip -r engine.zip engine.py requirements.txt
           cd ../notify && zip -r notify.zip notify.py requirements.txt
-          cd ../remediate && zip -r remediate.zip remediate.py requirements.txt
 
       - name: Terraform Init
         working-directory: ./terraform
@@ -60,11 +59,12 @@ jobs:
           echo "✅ Deployment complete!"
           echo ""
           echo "📊 Resources deployed:"
-          echo "- Lambda Functions: 5 (ingress, parser, engine, notify, remediate)"
+          echo "- Lambda Functions: 4 (ingress, parser, engine, notify)"
           echo "- API Gateway: REST API endpoint for ingress"
           echo "- DynamoDB Table: casestudy2-dev-events"
-          echo "- SQS Queues: parser-queue, engine-queue"
+          echo "- SQS Queues: 3 queues (parser, engine, notify)"
           echo "- SNS Topic: casestudy2-dev-security-alerts"
+          echo "- VPC: Private subnets with VPC endpoints (no NAT Gateway)"
           echo ""
           echo "🔔 IMPORTANT: Check your email (mehdicetinkaya6132@gmail.com)"
           echo "   for SNS subscription confirmation and click the link!"

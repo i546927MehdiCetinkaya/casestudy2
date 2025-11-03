@@ -7,7 +7,6 @@ from decimal import Decimal
 sqs = boto3.client('sqs')
 dynamodb = boto3.resource('dynamodb')
 
-REMEDIATION_QUEUE_URL = os.environ['REMEDIATION_QUEUE_URL']
 NOTIFY_QUEUE_URL = os.environ['NOTIFY_QUEUE_URL']
 DYNAMODB_TABLE = os.environ['DYNAMODB_TABLE']
 

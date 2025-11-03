@@ -1,7 +1,7 @@
 # Package Lambda Functions
 Write-Host "Packaging Lambda functions..." -ForegroundColor Cyan
 
-$lambdas = @("ingress", "parser", "engine", "notify", "remediate")
+$lambdas = @("ingress", "parser", "engine", "notify")
 
 foreach ($lambda in $lambdas) {
     Write-Host "  Zipping $lambda..." -ForegroundColor Yellow

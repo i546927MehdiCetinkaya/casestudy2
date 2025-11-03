@@ -54,8 +54,7 @@ resource "aws_iam_role_policy" "lambda_custom" {
         Resource = [
           aws_sqs_queue.parser_queue.arn,
           aws_sqs_queue.engine_queue.arn,
-          aws_sqs_queue.notify_queue.arn,
-          aws_sqs_queue.remediation_queue.arn
+          aws_sqs_queue.notify_queue.arn
         ]
       },
       {
@@ -74,6 +73,13 @@ resource "aws_iam_role_policy" "lambda_custom" {
 }
 
 # Archive Lambda source code
+data "archive_file" "ingress" {
+  type        = "zip"
+  source_dir  = "${path.module}/../lambda/ingress"
+  output_path = "${path.module}/../lambda/ingress.zip"
+  excludes    = ["*.zip", "__pycache__", "*.pyc"]
+}
+
 data "archive_file" "parser" {
   type        = "zip"
   source_dir  = "${path.module}/../lambda/parser"
@@ -95,11 +101,31 @@ data "archive_file" "notify" {
   excludes    = ["*.zip", "__pycache__", "*.pyc"]
 }
 
-data "archive_file" "remediate" {
-  type        = "zip"
-  source_dir  = "${path.module}/../lambda/remediate"
-  output_path = "${path.module}/../lambda/remediate.zip"
-  excludes    = ["*.zip", "__pycache__", "*.pyc"]
+# Ingress Lambda Function (receives events from API Gateway)
+resource "aws_lambda_function" "ingress" {
+  filename         = data.archive_file.ingress.output_path
+  source_code_hash = data.archive_file.ingress.output_base64sha256
+  function_name    = "${var.project_name}-${var.environment}-ingress"
+  role             = aws_iam_role.lambda.arn
+  handler          = "ingress.lambda_handler"
+  runtime          = "python3.11"
+  timeout          = 30
+  memory_size      = 256
+
+  vpc_config {
+    subnet_ids         = aws_subnet.private[*].id
+    security_group_ids = [aws_security_group.lambda.id]
+  }
+
+  environment {
+    variables = {
+      ENVIRONMENT      = var.environment
+      PARSER_QUEUE_URL = aws_sqs_queue.parser_queue.url
+      LOG_LEVEL        = "INFO"
+    }
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.lambda_vpc_execution]
 }
 
 # Parser Lambda Function
@@ -149,7 +175,6 @@ resource "aws_lambda_function" "engine" {
   environment {
     variables = {
       ENVIRONMENT            = var.environment
-      REMEDIATION_QUEUE_URL  = aws_sqs_queue.remediation_queue.url
       NOTIFY_QUEUE_URL       = aws_sqs_queue.notify_queue.url
       DYNAMODB_TABLE         = aws_dynamodb_table.events.name
       LOG_LEVEL              = "INFO"
@@ -186,34 +211,12 @@ resource "aws_lambda_function" "notify" {
   depends_on = [aws_iam_role_policy_attachment.lambda_vpc_execution]
 }
 
-# Remediate Lambda Function
-resource "aws_lambda_function" "remediate" {
-  filename         = data.archive_file.remediate.output_path
-  source_code_hash = data.archive_file.remediate.output_base64sha256
-  function_name    = "${var.project_name}-${var.environment}-remediate"
-  role             = aws_iam_role.lambda.arn
-  handler          = "remediate.lambda_handler"
-  runtime          = "python3.11"
-  timeout          = 300
-  memory_size      = 512
-
-  vpc_config {
-    subnet_ids         = aws_subnet.private[*].id
-    security_group_ids = [aws_security_group.lambda.id]
-  }
-
-  environment {
-    variables = {
-      ENVIRONMENT     = var.environment
-      DYNAMODB_TABLE  = aws_dynamodb_table.events.name
-      LOG_LEVEL       = "INFO"
-    }
-  }
-
-  depends_on = [aws_iam_role_policy_attachment.lambda_vpc_execution]
+# CloudWatch Log Groups
+resource "aws_cloudwatch_log_group" "ingress" {
+  name              = "/aws/lambda/${aws_lambda_function.ingress.function_name}"
+  retention_in_days = 7
 }
 
-# CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "parser" {
   name              = "/aws/lambda/${aws_lambda_function.parser.function_name}"
   retention_in_days = 7
@@ -226,11 +229,6 @@ resource "aws_cloudwatch_log_group" "engine" {
 
 resource "aws_cloudwatch_log_group" "notify" {
   name              = "/aws/lambda/${aws_lambda_function.notify.function_name}"
-  retention_in_days = 7
-}
-
-resource "aws_cloudwatch_log_group" "remediate" {
-  name              = "/aws/lambda/${aws_lambda_function.remediate.function_name}"
   retention_in_days = 7
 }
 
@@ -251,10 +249,4 @@ resource "aws_lambda_event_source_mapping" "notify_sqs" {
   event_source_arn = aws_sqs_queue.notify_queue.arn
   function_name    = aws_lambda_function.notify.arn
   batch_size       = 10
-}
-
-resource "aws_lambda_event_source_mapping" "remediate_sqs" {
-  event_source_arn = aws_sqs_queue.remediation_queue.arn
-  function_name    = aws_lambda_function.remediate.arn
-  batch_size       = 1
 }

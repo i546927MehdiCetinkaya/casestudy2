@@ -13,9 +13,9 @@ output "private_subnet_ids" {
   value       = aws_subnet.private[*].id
 }
 
-output "lambda_private_subnet_id" {
-  description = "Lambda Private Subnet ID"
-  value       = aws_subnet.lambda_private.id
+output "ingress_lambda_arn" {
+  description = "Ingress Lambda ARN"
+  value       = aws_lambda_function.ingress.arn
 }
 
 output "parser_lambda_arn" {
@@ -33,11 +33,6 @@ output "notify_lambda_arn" {
   value       = aws_lambda_function.notify.arn
 }
 
-output "remediate_lambda_arn" {
-  description = "Remediate Lambda ARN"
-  value       = aws_lambda_function.remediate.arn
-}
-
 output "dynamodb_table_name" {
   description = "DynamoDB Table Name"
   value       = aws_dynamodb_table.events.name
@@ -46,9 +41,4 @@ output "dynamodb_table_name" {
 output "sns_topic_arn" {
   description = "SNS Topic ARN"
   value       = aws_sns_topic.security_alerts.arn
-}
-
-output "vpn_status" {
-  description = "VPN Connection Status"
-  value       = var.enable_vpn ? "Enabled" : "Disabled"
 }
