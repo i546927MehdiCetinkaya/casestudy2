@@ -243,77 +243,8 @@ resource "aws_cloudwatch_metric_alarm" "api_gateway_latency" {
   }
 }
 
-# Dashboard
-resource "aws_cloudwatch_dashboard" "soar_monitoring" {
-  dashboard_name = "${var.project_name}-${var.environment}-soar-monitoring"
-
-  dashboard_body = jsonencode({
-    widgets = [
-      {
-        type = "metric"
-        properties = {
-          metrics = [
-            ["AWS/Lambda", "Invocations", { stat = "Sum", label = "Parser Invocations" }],
-            [".", "Errors", { stat = "Sum", label = "Parser Errors" }],
-            [".", "Duration", { stat = "Average", label = "Parser Duration" }]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "Parser Lambda Metrics"
-        }
-      },
-      {
-        type = "metric"
-        properties = {
-          metrics = [
-            ["AWS/Lambda", "Invocations", { stat = "Sum", label = "Engine Invocations" }],
-            [".", "Errors", { stat = "Sum", label = "Engine Errors" }],
-            [".", "Duration", { stat = "Average", label = "Engine Duration" }]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "Engine Lambda Metrics"
-        }
-      },
-      {
-        type = "metric"
-        properties = {
-          metrics = [
-            ["AWS/SQS", "ApproximateNumberOfMessagesVisible", { stat = "Sum" }],
-            [".", "ApproximateAgeOfOldestMessage", { stat = "Maximum" }]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "SQS Queue Metrics"
-        }
-      },
-      {
-        type = "metric"
-        properties = {
-          metrics = [
-            ["AWS/DynamoDB", "ConsumedReadCapacityUnits", { stat = "Sum" }],
-            [".", "ConsumedWriteCapacityUnits", { stat = "Sum" }]
-          ]
-          period = 300
-          stat   = "Sum"
-          region = var.aws_region
-          title  = "DynamoDB Metrics"
-        }
-      }
-    ]
-  })
-}
-
 # Outputs
 output "lambda_alarms_topic_arn" {
   value       = aws_sns_topic.lambda_alarms.arn
   description = "ARN of the Lambda alarms SNS topic"
-}
-
-output "cloudwatch_dashboard_name" {
-  value       = aws_cloudwatch_dashboard.soar_monitoring.dashboard_name
-  description = "Name of the CloudWatch dashboard"
 }
