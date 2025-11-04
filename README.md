@@ -1,59 +1,59 @@
 # SOAR Security Platform
 
-Geautomatiseerd beveiligingssysteem dat SSH brute force aanvallen detecteert en direct email waarschuwingen verstuurt.
+Automated security system that detects SSH brute force attacks and sends instant email alerts.
 
-> 📐 **Architectuur diagram**: Zie [ARCHITECTURE.md](ARCHITECTURE.md)
+> 📐 **Architecture Diagram**: See [ARCHITECTURE.md](ARCHITECTURE.md)
 
-## Wat is dit?
+## What is this?
 
-Een **SOAR** (Security Orchestration, Automation, and Response) platform dat 24/7 Ubuntu servers monitort op verdachte inlogpogingen. Bij detectie van brute force patronen worden security teams automatisch gealarmeerd via email.
+A **SOAR** (Security Orchestration, Automation, and Response) platform that monitors Ubuntu servers 24/7 for suspicious login attempts. When brute force patterns are detected, security teams are automatically alerted via email.
 
-## Het probleem
+## The Problem
 
-Hackers voeren dagelijks duizenden geautomatiseerde brute force aanvallen uit op servers. Handmatige monitoring is onmogelijk en late detectie leidt tot succesvolle datalekken.
+Hackers execute thousands of automated brute force attacks on servers daily. Manual monitoring is impossible and late detection leads to successful data breaches.
 
-## De oplossing
+## The Solution
 
-Dit systeem:
-- Monitort continu `/var/log/auth.log` op Ubuntu server
-- Detecteert mislukte SSH-inlogpogingen in real-time
-- Analyseert patronen (aantal pogingen per IP binnen 2 minuten)
-- Verstuurt automatische email alerts bij verdacht gedrag
+This system:
+- Continuously monitors `/var/log/auth.log` on Ubuntu server
+- Detects failed SSH login attempts in real-time
+- Analyzes patterns (number of attempts per IP within 2 minutes)
+- Sends automatic email alerts for suspicious behavior
 
-## Hoe werkt het?
+## How Does It Work?
 
 ```
 Ubuntu Server → HTTPS → API Gateway → Lambda (VPC) → Email Alert
 ```
 
-1. **Ingress**: Valideert inkomende events
-2. **Parser**: Slaat events op in DynamoDB
-3. **Engine**: Detecteert brute force patronen
-4. **Notify**: Verstuurt email via SNS
+1. **Ingress**: Validates incoming events
+2. **Parser**: Stores events in DynamoDB
+3. **Engine**: Detects brute force patterns
+4. **Notify**: Sends email via SNS
 
-**Netwerk Architectuur:**
-- Ubuntu server stuurt events via **HTTPS** naar publieke API Gateway endpoint
-- Lambda functies draaien in **private VPC subnets** voor maximale security
-- **VPC Endpoints** zorgen voor directe AWS service communicatie (DynamoDB, SQS, SNS)
-- **Geen NAT Gateway** nodig - alles via VPC endpoints (lagere kosten)
-- **Geen VPN** nodig - API Gateway is publiek bereikbaar via HTTPS
+**Network Architecture:**
+- Ubuntu server sends events via **HTTPS** to public API Gateway endpoint
+- Lambda functions run in **private VPC subnets** for maximum security
+- **VPC Endpoints** provide direct AWS service communication (DynamoDB, SQS, SNS)
+- **No NAT Gateway** needed - everything via VPC endpoints (lower costs)
+- **No VPN** needed - API Gateway is publicly accessible via HTTPS
 
-## Waarschuwingen
+## Alerts
 
-| Pogingen | Actie |
-|----------|-------|
-| 3x | Eerste waarschuwing |
-| 5x | Verhoogd alarm |
-| 10x | Mogelijk brute force |
-| 15x+ | Bevestigde aanval |
+| Attempts | Action |
+|----------|--------|
+| 3x | Initial warning |
+| 5x | Elevated alert |
+| 10x | Possible brute force |
+| 15x+ | Confirmed attack |
 
-## Technologie
+## Technology
 
 **AWS Serverless:**
 - Lambda (event processing in VPC)
 - DynamoDB (event storage)
 - SQS (message queues)
-- SNS (email notificaties)
+- SNS (email notifications)
 - API Gateway (REST API)
 - VPC Endpoints (secure AWS service access)
 
@@ -63,20 +63,20 @@ Ubuntu Server → HTTPS → API Gateway → Lambda (VPC) → Email Alert
 
 ## Deployment
 
-Volledig geautomatiseerd via GitHub Actions bij elke push naar main branch.
+Fully automated via GitHub Actions on every push to main branch.
 
 ```bash
-# Handmatig
+# Manual
 cd terraform
 terraform init
 terraform apply
 ```
 
-## Project Structuur
+## Project Structure
 
 ```
 casestudy2/
-├── lambda/           # 5 Lambda functies
+├── lambda/           # 4 Lambda functions
 ├── terraform/        # Infrastructure as Code
 ├── scripts/          # Helper scripts
 └── .github/          # CI/CD workflows
@@ -84,8 +84,8 @@ casestudy2/
 
 ## Academic Context
 
-**Case Study 2** | Fontys Hogeschool | Semester 3 | 2025  
-Demonstreert cloud-native security automation en DevOps principes.
+**Case Study 2** | Fontys University of Applied Sciences | Semester 3 | 2025  
+Demonstrates cloud-native security automation and DevOps principles.
 
 ---
 

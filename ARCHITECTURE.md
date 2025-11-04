@@ -75,31 +75,31 @@ flowchart TB
     style Endpoints fill:#0f3460,stroke:#16213e,color:#fff
 ```
 
-## Legenda
+## Legend
 
-### Netwerk
-- **On-Premises**: Ubuntu server (192.168.154.13) in lokaal netwerk
-- **Internet**: Ubuntu stuurt events via HTTPS naar publieke API Gateway endpoint
-- **API Gateway**: Publiek bereikbaar REST API endpoint met API key authenticatie
-- **Private Subnets**: Lambda functies zonder directe internet toegang
-- **VPC Endpoints**: Secure private connecties naar AWS services (geen internet nodig)
+### Network
+- **On-Premises**: Ubuntu server (192.168.154.13) in local network
+- **Internet**: Ubuntu sends events via HTTPS to public API Gateway endpoint
+- **API Gateway**: Publicly accessible REST API endpoint with API key authentication
+- **Private Subnets**: Lambda functions without direct internet access
+- **VPC Endpoints**: Secure private connections to AWS services (no internet required)
 
-### Security Voordelen
-1. **Geen VPN vereist** - API Gateway is publiek bereikbaar via HTTPS
-2. **Geen NAT Gateway** - Lambda functies gebruiken VPC endpoints voor AWS services
-3. **Cost-effective** - Lagere kosten zonder NAT Gateway ($0.045/uur = $32/maand bespaard)
-4. **Secure** - Al het verkeer blijft binnen AWS backbone netwerk
-5. **Isolated Lambda** - Functies draaien in private subnets zonder internet access
+### Security Benefits
+1. **No VPN Required** - API Gateway is publicly accessible via HTTPS
+2. **No NAT Gateway** - Lambda functions use VPC endpoints for AWS services
+3. **Cost-Effective** - Lower costs without NAT Gateway ($0.045/hour = $32/month saved)
+4. **Secure** - All traffic stays within AWS backbone network
+5. **Isolated Lambda** - Functions run in private subnets without internet access
 
 ### Event Flow
-1. Ubuntu detecteert mislukte SSH login → stuurt naar API Gateway
-2. Ingress Lambda valideert → forward naar Parser Queue
-3. Parser Lambda slaat op in DynamoDB → forward naar Engine Queue
-4. Engine Lambda analyseert patroon → bij bedreiging naar Notify Queue
-5. Notify Lambda verstuurt email via SNS naar security team
+1. Ubuntu detects failed SSH login → sends to API Gateway
+2. Ingress Lambda validates → forwards to Parser Queue
+3. Parser Lambda stores in DynamoDB → forwards to Engine Queue
+4. Engine Lambda analyzes pattern → if threat detected, sends to Notify Queue
+5. Notify Lambda sends email via SNS to security team
 
-### Alarmniveaus
-- 3 pogingen: Eerste waarschuwing
-- 5 pogingen: Verhoogd alarm
-- 10 pogingen: Mogelijk brute force
-- 15+ pogingen: Bevestigde aanval
+### Alert Levels
+- 3 attempts: Initial warning
+- 5 attempts: Elevated alert
+- 10 attempts: Possible brute force
+- 15+ attempts: Confirmed attack
