@@ -1,0 +1,58 @@
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfplan
+tfplan
+.terraform.lock.hcl
+
+# Lambda packages
+lambda/**/*.zip
+lambda/**/package/
+lambda/**/__pycache__/
+lambda/**/*.pyc
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Secrets
+*.pem
+*.key
+secrets.yml
+credentials.yml
+
+# Node modules
+node_modules/
+
+# Ansible
+*.retry
+
+# Kubernetes
+kubeconfig
+*.kubeconfig

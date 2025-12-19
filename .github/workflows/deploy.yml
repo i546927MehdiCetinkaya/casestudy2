@@ -1,0 +1,70 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'lambda/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920120424621:role/githubrepo
+          aws-region: eu-central-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Package Lambda Functions
+        run: |
+          cd lambda/ingress && zip -r ingress.zip ingress.py requirements.txt
+          cd ../parser && zip -r parser.zip parser.py requirements.txt
+          cd ../engine && zip -r engine.zip engine.py requirements.txt
+          cd ../notify && zip -r notify.zip notify.py requirements.txt
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+      
+      - name: Show Deployment Info
+        working-directory: ./terraform
+        run: |
+          echo "✅ Deployment complete!"
+          echo ""
+          echo "📊 Resources deployed:"
+          echo "- Lambda Functions: 4 (ingress, parser, engine, notify)"
+          echo "- API Gateway: REST API endpoint for ingress"
+          echo "- DynamoDB Table: casestudy2-dev-events"
+          echo "- SQS Queues: 3 queues (parser, engine, notify)"
+          echo "- SNS Topic: casestudy2-dev-security-alerts"
+          echo "- VPC: Private subnets with VPC endpoints (no NAT Gateway)"
+          echo ""
+          echo "🔔 IMPORTANT: Check your email (mehdicetinkaya6132@gmail.com)"
+          echo "   for SNS subscription confirmation and click the link!"

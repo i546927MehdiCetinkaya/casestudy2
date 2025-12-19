@@ -1,0 +1,47 @@
+name: Destroy Lambda SOAR
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DESTROY to confirm'
+        required: true
+
+env:
+  AWS_REGION: eu-central-1
+
+jobs:
+  destroy:
+    name: Destroy
+    runs-on: ubuntu-latest
+    if: github.event.inputs.confirm == 'DESTROY'
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::920120424621:role/githubrepo
+          aws-region: eu-central-1
+      
+      - name: Package Lambda Functions
+        working-directory: ./lambda
+        run: |
+          for dir in ingress parser engine notify; do
+            cd $dir
+            zip -r ${dir}.zip . -x "*.pyc" -x "__pycache__/*" -x "*.dist-info/*"
+            cd ..
+          done
+      
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+      
+      - name: Destroy Infrastructure
+        working-directory: ./terraform
+        run: |
+          terraform init
+          terraform destroy -auto-approve
